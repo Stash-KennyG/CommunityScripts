@@ -44,29 +44,52 @@
     button.disabled = true;
     button.textContent = "Syncing...";
     try {
-      const res = await fetch("/graphql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query:
-            "mutation RunTimestampSync($plugin_id: ID!, $args: Map!) { runPluginOperation(plugin_id: $plugin_id, args: $args) }",
-          variables: {
-            plugin_id: PLUGIN_ID,
-            args: { mode: "processScene", scene_id: sceneId },
-          },
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || json.errors) {
-        throw new Error(
-          (json.errors && json.errors[0] && json.errors[0].message) ||
-            "Failed to run task"
-        );
+      const operationQuery =
+        "mutation RunTimestampSync($plugin_id: ID!, $args: Map!) { runPluginOperation(plugin_id: $plugin_id, args: $args) }";
+      const operationVars = {
+        plugin_id: PLUGIN_ID,
+        args: { mode: "processScene", scene_id: sceneId },
+      };
+
+      const taskQuery =
+        "mutation RunTimestampSyncTask($sceneId: ID!) { runPluginTask(plugin_id: \"TimestampSyncButton\", task_name: \"Sync Scene\", args: { scene_id: $sceneId }) }";
+      const taskVars = { sceneId: sceneId };
+
+      async function callGraphQL(query, variables) {
+        const res = await fetch("/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, variables }),
+        });
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (_) {
+          json = null;
+        }
+        if (!res.ok || (json && json.errors)) {
+          const msg =
+            (json &&
+              json.errors &&
+              json.errors[0] &&
+              json.errors[0].message) ||
+            `HTTP ${res.status}`;
+          throw new Error(msg);
+        }
+        return json;
       }
-      button.textContent = "Queued";
+
+      try {
+        await callGraphQL(operationQuery, operationVars);
+      } catch (opErr) {
+        await callGraphQL(taskQuery, taskVars);
+      }
+
+      button.textContent = "Synced";
+      button.title = "Sync completed; refreshing page";
       window.setTimeout(() => {
-        button.textContent = originalText;
-      }, 1200);
+        window.location.reload();
+      }, 500);
     } catch (err) {
       const msg =
         "[TimestampSyncButton] Failed to queue sync task: " +
@@ -74,6 +97,7 @@
       console.error(msg);
       logToStash("error", msg, sceneId);
       button.textContent = "Error";
+      button.title = msg;
       window.setTimeout(() => {
         button.textContent = originalText;
       }, 1800);
