@@ -334,58 +334,6 @@ def processSceneTimestamTrade(s):
                                     ]:
                                         new_scene["movies"].append(m)
                                         needs_update = True
-                    #                    log.debug(s)
-                    if getTag("[Timestamp: Auto Gallery]") in [
-                        x["id"] for x in s["tags"]
-                    ]:
-                        autoGallery = True
-                        for g in s["galleries"]:
-                            gal = stash.find_gallery(g["id"])
-                            if getTag("[Timestamp: Auto Gallery]") in [
-                                x["id"] for x in gal["tags"]
-                            ]:
-                                autoGallery = False
-                        if autoGallery:
-                            g1 = stash.find_galleries(
-                                f={"url": {"modifier": "EQUALS", "value": url}}
-                            )
-                            if len(g1) > 0:
-                                if "gallery_ids" not in new_scene:
-                                    new_scene["gallery_ids"] = [
-                                        x["id"] for x in s["galleries"]
-                                    ]
-                                for g2 in g1:
-                                    if g2["id"] not in new_scene["gallery_ids"]:
-                                        new_scene["gallery_ids"].append(g2["id"])
-                                        needs_update = True
-                                        autoGallery = False
-                        if autoGallery:
-                            log.debug("creating auto gallery")
-                            # check the gallery if we have already
-                            log.debug(s["galleries"])
-                            gallery_input = {
-                                "title": s["title"],
-                                "date": s["date"],
-                                "details": s["details"],
-                                "urls": s["urls"],
-                                "scene_ids": [s["id"]],
-                                "tag_ids": [x["id"] for x in s["tags"]],
-                                "performer_ids": [x["id"] for x in s["performers"]],
-                            }
-                            if s["studio"]:
-                                gallery_input["studio_id"] = s["studio"]["id"]
-                            gallery_input["tag_ids"].append(
-                                getTag("[Timestamp: Auto Gallery]")
-                            )
-                            gallery_input["tag_ids"].append(
-                                getTag("[Timestamp: Skip Submit]")
-                            )
-                            gal = stash.create_gallery(gallery_input)
-                            new_scene["gallery_ids"] = [x["id"] for x in s["galleries"]]
-                            new_scene["gallery_ids"].append(gal)
-                            needs_update = True
-                        else:
-                            log.debug("auto gallery already exists")
                     log.debug(data.keys())
                     if settings["matchFunscripts"] and "funscripts" in data:
                         if not s["interactive"]:
@@ -1206,7 +1154,26 @@ def tag_exists(name):
     if key in tag_exists_cache:
         return tag_exists_cache[key]
     matches = stash.find_tags(q=name)
-    exists = any((t.get("name") or "").strip().lower() == key for t in matches)
+    exists = False
+    for t in matches:
+        canonical = (t.get("name") or "").strip().lower()
+        if canonical == key:
+            exists = True
+            break
+
+        # Support tag alias matching for non-canonical names.
+        aliases = t.get("aliases") or t.get("alias_list") or []
+        for alias in aliases:
+            alias_value = ""
+            if isinstance(alias, dict):
+                alias_value = (alias.get("name") or "").strip().lower()
+            else:
+                alias_value = str(alias).strip().lower()
+            if alias_value == key:
+                exists = True
+                break
+        if exists:
+            break
     tag_exists_cache[key] = exists
     return exists
 
