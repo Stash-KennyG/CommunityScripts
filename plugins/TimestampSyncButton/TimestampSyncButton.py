@@ -21,7 +21,7 @@ tag_exists_cache = {}
 
 
 def processScene(s):
-    log.info("TimestampSyncButton processing scene id=%s" % (s.get("id"),))
+    log.info("Processing scene id=%s" % (s.get("id"),))
     if "https://timestamp.trade/scene/" in [u[:30] for u in s["urls"]]:
         processSceneTimestamTrade(s)
     else:
@@ -431,7 +431,7 @@ def processSceneStashid(s):
             % (s.get("id"),)
         )
         return
-    #    skip_sync_tag_id = stash.find_tag("[Timestamp: Skip Sync]", create=True).get("id")
+    skip_sync_tag_id = stash.find_tag("[Timestamp: Skip Sync]", create=True).get("id")
 
     for sid in s["stash_ids"]:
         try:
