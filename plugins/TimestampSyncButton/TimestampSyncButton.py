@@ -20,6 +20,21 @@ tags_cache = {}
 tag_exists_cache = {}
 
 
+def get_scene_marker_ids(scene_id):
+    marker_ids = []
+    try:
+        scene = stash.find_scene(str(scene_id), fragment="id scene_markers { id }")
+        for marker in scene.get("scene_markers", []):
+            marker_id = marker.get("id")
+            if marker_id is not None:
+                marker_ids.append(str(marker_id))
+    except Exception as e:
+        log.error(
+            "Failed to fetch scene markers for scene %s: %s" % (scene_id, e)
+        )
+    return marker_ids
+
+
 def processScene(s):
     log.info("Processing scene id=%s" % (s.get("id"),))
     if "https://timestamp.trade/scene/" in [u[:30] for u in s["urls"]]:
@@ -96,18 +111,66 @@ def processSceneTimestamTrade(s):
                         #                        log.debug(marker)
                         if len(markers) > 0:
                             log.debug(markers)
-                            added = len(markers)
+                            imported = False
+                            before_marker_ids = set(get_scene_marker_ids(s["id"]))
                             if settings["overwriteMarkers"]:
                                 stash.destroy_scene_markers(s["id"])
                                 mp.import_scene_markers(stash, markers, s["id"], 15)
+                                imported = True
                             elif (
                                 len(s["scene_markers"]) == 0 or settings["mergeMarkers"]
                             ):
                                 mp.import_scene_markers(stash, markers, s["id"], 15)
-                            log.info(
-                                "Imported %s marker(s) from timestamp.trade for scene %s"
-                                % (added, s.get("id"))
-                            )
+                                imported = True
+
+                            if imported:
+                                after_marker_ids = set(get_scene_marker_ids(s["id"]))
+                                new_marker_ids = sorted(
+                                    list(after_marker_ids - before_marker_ids),
+                                    key=lambda x: int(x) if x.isdigit() else x,
+                                )
+
+                                # Queue marker screenshot generation only for newly created markers.
+                                if len(new_marker_ids) > 0:
+                                    try:
+                                        generate_query = """
+mutation TimestampSyncGenerateMarkerScreenshots($input: GenerateMetadataInput!) {
+  metadataGenerate(input: $input)
+}
+"""
+                                        variables = {
+                                            "input": {
+                                                "markerScreenshots": True,
+                                                "markerIDs": new_marker_ids,
+                                                "overwrite": False,
+                                            }
+                                        }
+                                        res = stash.callGQL(generate_query, variables)
+                                        job_id = res.get("metadataGenerate")
+                                        log.info(
+                                            "Imported %s marker(s) from timestamp.trade for scene %s; queued screenshot job %s for %s new marker(s)"
+                                            % (
+                                                len(new_marker_ids),
+                                                s.get("id"),
+                                                job_id,
+                                                len(new_marker_ids),
+                                            )
+                                        )
+                                    except Exception as e:
+                                        log.error(
+                                            "Imported markers but failed to queue marker screenshot generation for scene %s: %s"
+                                            % (s.get("id"), e)
+                                        )
+                                else:
+                                    log.info(
+                                        "Imported markers for scene %s but detected no new marker IDs to queue for screenshot generation"
+                                        % (s.get("id"),)
+                                    )
+                            else:
+                                log.info(
+                                    "Prepared %s marker(s) for scene %s but import was skipped by merge/overwrite settings"
+                                    % (len(markers), s.get("id"))
+                                )
                         else:
                             log.info(
                                 "No markers created from timestamp.trade for scene %s"
