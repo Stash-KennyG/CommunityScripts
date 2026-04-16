@@ -8,6 +8,8 @@ Adds an intrinsic image resolution line to SceneTagger's **Create Performer** di
 - Displays the image intrinsic size as `WIDTH x HEIGHT`.
 - Renders the value directly beneath the **Select performer image** label.
 
+![Example](example.png)
+
 ## Notes
 
 - The value reflects the selected image's intrinsic dimensions (`naturalWidth`/`naturalHeight`).
