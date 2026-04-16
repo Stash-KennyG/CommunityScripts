@@ -23,8 +23,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query:
-            "mutation RunTimestampSync($sceneId: ID!) { runPluginTask(plugin_id: \"TimestampSyncButton\", task_name: \"Sync Scene\", args: { scene_id: $sceneId }) }",
-          variables: { sceneId: sceneId },
+            "mutation RunTimestampSync($plugin_id: ID!, $args: Map!) { runPluginOperation(plugin_id: $plugin_id, args: $args) }",
+          variables: {
+            plugin_id: PLUGIN_ID,
+            args: { mode: "processScene", scene_id: sceneId },
+          },
         }),
       });
       const json = await res.json();
