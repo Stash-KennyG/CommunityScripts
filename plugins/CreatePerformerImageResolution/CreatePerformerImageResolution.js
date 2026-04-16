@@ -2,106 +2,73 @@
   "use strict";
 
   const PLUGIN_CLASS = "cpir-resolution";
-  const MODAL_SELECTOR = ".modal-dialog, .Modal-dialog";
-  const WATCH_MS = 250;
-  const states = new WeakMap();
+  const wiredSelections = new WeakSet();
 
-  function isVisible(el) {
-    if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
-    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+  function formatResolution(img) {
+    if (!img) return "";
+    const w = Number(img.naturalWidth || 0);
+    const h = Number(img.naturalHeight || 0);
+    if (!w || !h) return "";
+    return `${w} x ${h}`;
   }
 
-  function hasCreatePerformerText(modal) {
-    const text = (modal.textContent || "").toLowerCase();
-    return text.includes("create performer") && text.includes("select performer image");
-  }
+  function ensureResolutionNode(imageSelection, label) {
+    let node = imageSelection.querySelector("." + PLUGIN_CLASS);
+    if (node) return node;
 
-  function findLabel(modal) {
-    const nodes = modal.querySelectorAll("div, span, p");
-    for (const node of nodes) {
-      const text = (node.textContent || "").trim().toLowerCase();
-      if (text.includes("select performer image")) return node;
+    node = document.createElement("h5");
+    node.className = "cpir-resolution";
+
+    // Match the native label typography/spacing as closely as possible.
+    if (label && label.classList && label.classList.length) {
+      label.classList.forEach((cls) => node.classList.add(cls));
     }
-    return null;
+
+    const controls = imageSelection.querySelector(".d-flex.mt-3");
+    if (controls) {
+      controls.insertAdjacentElement("afterend", node);
+    } else if (label) {
+      label.insertAdjacentElement("afterend", node);
+    } else {
+      imageSelection.appendChild(node);
+    }
+
+    return node;
   }
 
-  function findPrimaryImage(modal) {
-    const images = Array.from(modal.querySelectorAll("img"));
-    const candidates = images.filter((img) => {
-      if (!isVisible(img)) return false;
-      const rect = img.getBoundingClientRect();
-      return rect.width >= 120 && rect.height >= 120;
+  function refresh(imageSelection) {
+    const img = imageSelection.querySelector(".performer-image img");
+    const label = imageSelection.querySelector(".d-flex.mt-3 h5.flex-grow-1");
+    const node = ensureResolutionNode(imageSelection, label);
+    node.textContent = formatResolution(img);
+  }
+
+  function wire(imageSelection) {
+    if (wiredSelections.has(imageSelection)) return;
+    wiredSelections.add(imageSelection);
+
+    const img = imageSelection.querySelector(".performer-image img");
+    const controls = imageSelection.querySelector(".d-flex.mt-3");
+    const buttons = controls ? controls.querySelectorAll("button") : [];
+
+    if (img) {
+      img.addEventListener("load", () => refresh(imageSelection));
+    }
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        window.setTimeout(() => refresh(imageSelection), 0);
+        window.setTimeout(() => refresh(imageSelection), 120);
+      });
     });
 
-    if (candidates.length === 0) return null;
-    candidates.sort((a, b) => b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height);
-    return candidates[0];
-  }
-
-  function ensureResolutionNode(state, labelNode) {
-    if (state.resolutionNode && state.resolutionNode.isConnected) return state.resolutionNode;
-
-    const resolution = document.createElement("div");
-    resolution.className = PLUGIN_CLASS;
-
-    // Inherit native typography classnames from the label when possible.
-    if (labelNode && labelNode.classList.length) {
-      labelNode.classList.forEach((cls) => resolution.classList.add(cls));
-    }
-
-    labelNode.insertAdjacentElement("afterend", resolution);
-    state.resolutionNode = resolution;
-    return resolution;
-  }
-
-  function updateResolution(state) {
-    if (!state.modal.isConnected) return;
-    const labelNode = findLabel(state.modal);
-    if (!labelNode) return;
-
-    const image = findPrimaryImage(state.modal);
-    const resolutionNode = ensureResolutionNode(state, labelNode);
-    if (!image) {
-      resolutionNode.textContent = "";
-      return;
-    }
-
-    if (image.naturalWidth > 0 && image.naturalHeight > 0) {
-      resolutionNode.textContent = `${image.naturalWidth} x ${image.naturalHeight}`;
-    } else {
-      resolutionNode.textContent = "";
-    }
-  }
-
-  function wireModal(modal) {
-    if (states.has(modal)) return;
-    const state = {
-      modal,
-      resolutionNode: null,
-      intervalId: null,
-    };
-
-    state.intervalId = window.setInterval(() => {
-      if (!modal.isConnected) {
-        window.clearInterval(state.intervalId);
-        return;
-      }
-      updateResolution(state);
-    }, WATCH_MS);
-
-    states.set(modal, state);
-    updateResolution(state);
+    refresh(imageSelection);
   }
 
   function scan() {
-    const modals = document.querySelectorAll(MODAL_SELECTOR);
-    for (const modal of modals) {
-      if (!isVisible(modal)) continue;
-      if (!hasCreatePerformerText(modal)) continue;
-      wireModal(modal);
-    }
+    const selections = document.querySelectorAll(
+      ".performer-create-modal .image-selection"
+    );
+    selections.forEach(wire);
   }
 
   const observer = new MutationObserver(scan);
