@@ -1349,6 +1349,13 @@ FRAGMENT_SERVER = json_input["server_connection"]
 stash = StashInterface(FRAGMENT_SERVER)
 config = stash.get_configuration()
 settings = {
+    # Keep legacy toggles present to avoid KeyError paths in inherited code.
+    "createGalleryFromScene": False,
+    "createMovieFromScene": False,
+    "extraUrls": False,
+    "matchFunscripts": False,
+    "submitFunscriptHash": False,
+    "path": "/download_dir/tt-auto",
     "autoCreateTags": False,
     "addTimestampTradeUrl": False,
     "createMarkers": True,

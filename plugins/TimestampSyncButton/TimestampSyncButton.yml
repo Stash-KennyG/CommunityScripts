@@ -1,6 +1,6 @@
 name: Timestamp Sync Button
 description: Manual scene marker sync from timestamp.trade using a Scene page Markers-tab button.
-version: 0.1
+version: 0.1.5
 url: https://discourse.stashapp.cc/t/timestamp-trade/1415
 ui:
   javascript:
@@ -21,12 +21,6 @@ settings:
     type: BOOLEAN
   createMarkers:
     displayName: Add markers from timestamp.trade
-    type: BOOLEAN
-  addTsTradeTag:
-    displayName: Add the [Timestamp] tag to created markers.
-    type: BOOLEAN
-  addTsTradeTitle:
-    displayName: Add TsTrade to the start of generated marker titles.
     type: BOOLEAN
   excludedMarkerWords:
     displayName: Exclude markers containing these words
