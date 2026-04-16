@@ -1,0 +1,9 @@
+name: Create Performer Image Resolution
+description: Shows the intrinsic resolution of the selected image in SceneTagger's Create Performer dialog.
+version: 0.1
+url: https://discourse.stashapp.cc/
+ui:
+  javascript:
+    - CreatePerformerImageResolution.js
+  css:
+    - CreatePerformerImageResolution.css
