@@ -49,7 +49,18 @@
 
   function routeMatches() {
     var p = window.location.pathname || "";
-    return p === ROUTE_PREFIX || p.indexOf(ROUTE_PREFIX + "/") === 0;
+    if (p === ROUTE_PREFIX || p.indexOf(ROUTE_PREFIX + "/") === 0) {
+      return true;
+    }
+    // Scene / movie / performer detail pages may render `div.group-card` (e.g. Group tab).
+    if (
+      p.indexOf("/scenes/") === 0 ||
+      p.indexOf("/movies/") === 0 ||
+      p.indexOf("/performers/") === 0
+    ) {
+      return true;
+    }
+    return false;
   }
 
   function parseGroupIdFromHref(href) {
@@ -212,7 +223,9 @@
     });
 
     for (var fc = 0; fc < rows.length; fc++) {
-      var filesForCount = (rows[fc].scene && rows[fc].scene.files) || [];
+      var rowFc = rows[fc];
+      if (!rowFc) continue;
+      var filesForCount = (rowFc.scene && rowFc.scene.files) || [];
       totalFileCount += filesForCount.length;
     }
     var bypassDurationFilterForResolution = totalFileCount === 1;
@@ -221,6 +234,7 @@
     var performerById = new Map();
     for (var j = 0; j < rows.length; j++) {
       var row = rows[j];
+      if (!row) continue;
       var scene = row.scene;
       var idx = row.idx;
       var duration = row.duration;
@@ -237,7 +251,8 @@
         }
       }
 
-      var perfs = (scene && scene.performers) || [];
+      var perfs =
+        scene && Array.isArray(scene.performers) ? scene.performers : [];
       for (var p = 0; p < perfs.length; p++) {
         var perf = perfs[p];
         if (!perf) continue;
@@ -603,7 +618,7 @@
   }
 
   function injectMetricsIntoCard(card, metrics) {
-    if (!card || !metrics) return;
+    if (!card || !metrics || typeof metrics !== "object") return;
     var popovers = card.querySelector(".card-popovers");
     if (!popovers) return;
     var sceneCount = popovers.querySelector(".scene-count");
@@ -632,9 +647,12 @@
     resolutionNode.classList.add("gd-stat-right");
     resolutionNode.classList.add("chip");
     if (state.includePerformers) {
+      var performerList = Array.isArray(metrics.performers)
+        ? metrics.performers
+        : [];
       var performerNode = buildPerformerChip(
         "gd-performer-" + Date.now(),
-        metrics.performers
+        performerList
       );
       if (performerNode) popovers.appendChild(performerNode);
     }
@@ -646,8 +664,12 @@
   async function decorateGroupCard(card) {
     var groupId = parseGroupIdFromCard(card);
     if (!groupId) return;
-    var metrics = await getMetricsForGroup(groupId);
-    injectMetricsIntoCard(card, metrics);
+    try {
+      var metrics = await getMetricsForGroup(groupId);
+      injectMetricsIntoCard(card, metrics);
+    } catch (e) {
+      console.warn("[GroupDetails] metrics failed for group", groupId, e);
+    }
   }
 
   function applyDomEnhancements() {

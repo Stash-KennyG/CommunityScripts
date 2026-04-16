@@ -1,6 +1,6 @@
 name: Group Details
 description: Adds group-card metrics for filtered duration and average vertical resolution.
-version: 0.2.3
+version: 0.2.5
 url: https://discourse.stashapp.cc/t/group-details/6819
 ui:
   javascript:
