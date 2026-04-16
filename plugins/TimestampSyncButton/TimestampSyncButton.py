@@ -21,6 +21,7 @@ tag_exists_cache = {}
 
 
 def processScene(s):
+    log.info("TimestampSyncButton processing scene id=%s" % (s.get("id"),))
     if "https://timestamp.trade/scene/" in [u[:30] for u in s["urls"]]:
         processSceneTimestamTrade(s)
     else:
@@ -425,7 +426,10 @@ def processSceneTimestamTrade(s):
 
 def processSceneStashid(s):
     if len(s["stash_ids"]) == 0:
-        log.debug("no scenes to process")
+        log.info(
+            "Scene %s has no stash_ids and no timestamp.trade scene URL; skipping sync"
+            % (s.get("id"),)
+        )
         return
     #    skip_sync_tag_id = stash.find_tag("[Timestamp: Skip Sync]", create=True).get("id")
 
@@ -1375,3 +1379,13 @@ if "mode" in json_input["args"]:
             processScene(scene)
         else:
             log.error("processScene mode requires scene_id argument")
+    elif "clientLog" == PLUGIN_ARGS:
+        level = str(json_input["args"].get("level", "info")).lower()
+        message = str(json_input["args"].get("message", "")).strip()
+        if message:
+            if level == "error":
+                log.error(message)
+            elif level == "debug":
+                log.debug(message)
+            else:
+                log.info(message)

@@ -7,6 +7,32 @@
   const POLL_MS = 700;
   const eligibilityCache = new Map();
 
+  async function logToStash(level, message, sceneId) {
+    if (!message) return;
+    try {
+      await fetch("/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query:
+            "mutation TimestampSyncClientLog($plugin_id: ID!, $args: Map!) { runPluginOperation(plugin_id: $plugin_id, args: $args) }",
+          variables: {
+            plugin_id: PLUGIN_ID,
+            args: {
+              mode: "clientLog",
+              level: level || "info",
+              scene_id: sceneId || "",
+              message:
+                (sceneId ? `[scene:${sceneId}] ` : "") + String(message),
+            },
+          },
+        }),
+      });
+    } catch (_) {
+      // Do not recurse logging failures.
+    }
+  }
+
   function getSceneId() {
     const match = window.location.pathname.match(/\/scenes\/(\d+)/);
     return match ? match[1] : null;
@@ -42,7 +68,11 @@
         button.textContent = originalText;
       }, 1200);
     } catch (err) {
-      console.error("[TimestampSyncButton] Failed to run sync task", err);
+      const msg =
+        "[TimestampSyncButton] Failed to queue sync task: " +
+        (err && err.message ? err.message : String(err));
+      console.error(msg);
+      logToStash("error", msg, sceneId);
       button.textContent = "Error";
       window.setTimeout(() => {
         button.textContent = originalText;
@@ -95,7 +125,11 @@
       eligibilityCache.set(sceneId, result);
       return result;
     } catch (err) {
-      console.error("[TimestampSyncButton] Eligibility check failed", err);
+      const msg =
+        "[TimestampSyncButton] Eligibility check failed: " +
+        (err && err.message ? err.message : String(err));
+      console.error(msg);
+      logToStash("error", msg, sceneId);
       const result = {
         allowed: false,
         reason: "Could not validate scene sync eligibility",
