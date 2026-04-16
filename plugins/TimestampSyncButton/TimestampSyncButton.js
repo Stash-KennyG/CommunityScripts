@@ -38,12 +38,69 @@
     return match ? match[1] : null;
   }
 
+  async function getMarkerCount(sceneId) {
+    if (!sceneId) return 0;
+    try {
+      const res = await fetch("/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query:
+            "query TimestampSyncMarkerCount($id: ID!) { findScene(id: $id) { id scene_markers { id } } }",
+          variables: { id: sceneId },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.errors || !json.data || !json.data.findScene) {
+        throw new Error(
+          (json.errors && json.errors[0] && json.errors[0].message) ||
+            "Failed to load marker count"
+        );
+      }
+      const scene = json.data.findScene;
+      return Array.isArray(scene.scene_markers)
+        ? scene.scene_markers.length
+        : 0;
+    } catch (err) {
+      const msg =
+        "[TimestampSyncButton] Marker count query failed: " +
+        (err && err.message ? err.message : String(err));
+      console.error(msg);
+      logToStash("error", msg, sceneId);
+      return 0;
+    }
+  }
+
+  function getStatusElement(button) {
+    if (!button) return null;
+    if (button._tsbStatusEl) return button._tsbStatusEl;
+    const panel = button.closest(".scene-markers-panel");
+    if (!panel) return null;
+    const createBtn = Array.from(
+      panel.querySelectorAll("button.btn.btn-primary")
+    ).find((btn) => (btn.textContent || "").trim() === "Create Marker");
+    if (!createBtn) return null;
+    const row = createBtn.closest(".d-flex") || createBtn.parentElement;
+    if (!row) return null;
+    let status = panel.querySelector(".tsb-status");
+    if (!status) {
+      status = document.createElement("div");
+      status.className = "tsb-status text-muted small mt-2";
+      row.insertAdjacentElement("beforebegin", status);
+    }
+    button._tsbStatusEl = status;
+    return status;
+  }
+
   async function runSync(sceneId, button) {
     if (!sceneId || !button) return;
+    const statusEl = getStatusElement(button);
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = "Syncing...";
     try {
+      const beforeCount = await getMarkerCount(sceneId);
+
       const operationQuery =
         "mutation RunTimestampSync($plugin_id: ID!, $args: Map!) { runPluginOperation(plugin_id: $plugin_id, args: $args) }";
       const operationVars = {
@@ -85,11 +142,23 @@
         await callGraphQL(taskQuery, taskVars);
       }
 
+      const afterCount = await getMarkerCount(sceneId);
+      const added = Math.max(0, afterCount - beforeCount);
+
       button.textContent = "Synced";
-      button.title = "Sync completed; refreshing page";
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      if (statusEl) {
+        if (added > 0) {
+          const noun = added === 1 ? "marker" : "markers";
+          statusEl.textContent = `${added} ${noun} added. Refresh to see new markers.`;
+        } else {
+          statusEl.textContent =
+            "No markers were added. Check the server log for details.";
+        }
+      }
+      button.title =
+        added > 0
+          ? "Sync completed; markers added. Refresh to see them."
+          : "Sync completed; no markers were added.";
     } catch (err) {
       const msg =
         "[TimestampSyncButton] Failed to queue sync task: " +

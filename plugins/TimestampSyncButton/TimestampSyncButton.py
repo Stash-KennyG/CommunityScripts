@@ -96,6 +96,7 @@ def processSceneTimestamTrade(s):
                         #                        log.debug(marker)
                         if len(markers) > 0:
                             log.debug(markers)
+                            added = len(markers)
                             if settings["overwriteMarkers"]:
                                 stash.destroy_scene_markers(s["id"])
                                 mp.import_scene_markers(stash, markers, s["id"], 15)
@@ -103,6 +104,15 @@ def processSceneTimestamTrade(s):
                                 len(s["scene_markers"]) == 0 or settings["mergeMarkers"]
                             ):
                                 mp.import_scene_markers(stash, markers, s["id"], 15)
+                            log.info(
+                                "Imported %s marker(s) from timestamp.trade for scene %s"
+                                % (added, s.get("id"))
+                            )
+                        else:
+                            log.info(
+                                "No markers created from timestamp.trade for scene %s"
+                                % (s.get("id"),)
+                            )
 
                     new_scene = {
                         "id": s["id"],
