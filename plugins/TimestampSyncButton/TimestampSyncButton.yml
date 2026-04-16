@@ -1,0 +1,45 @@
+name: Timestamp Sync Button
+description: Manual scene marker sync from timestamp.trade using a Scene page Markers-tab button.
+version: 0.1
+url: https://discourse.stashapp.cc/t/timestamp-trade/1415
+ui:
+  javascript:
+    - TimestampSyncButton.js
+  css:
+    - TimestampSyncButton.css
+exec:
+  - python
+  - "{pluginDir}/TimestampSyncButton.py"
+interface: raw
+settings:
+  autoCreateTags:
+    displayName: Auto-create tags
+    description: Create any tags locally in Stash that are present in scenes on imported markers.
+    type: BOOLEAN
+  addTimestampTradeUrl:
+    displayName: Add timestamp.trade url
+    type: BOOLEAN
+  createMarkers:
+    displayName: Add markers from timestamp.trade
+    type: BOOLEAN
+  addTsTradeTag:
+    displayName: Add the [Timestamp] tag to created markers.
+    type: BOOLEAN
+  addTsTradeTitle:
+    displayName: Add TsTrade to the start of generated marker titles.
+    type: BOOLEAN
+  excludedMarkerWords:
+    displayName: Exclude markers containing these words
+    description: Comma separated list of words to exclude.
+    type: STRING
+  overwriteMarkers:
+    displayName: Overwrite markers
+    type: BOOLEAN
+  mergeMarkers:
+    displayName: Merge markers
+    type: BOOLEAN
+tasks:
+  - name: Sync Scene
+    description: Fetch markers for a specific scene by scene_id.
+    defaultArgs:
+      mode: processScene
