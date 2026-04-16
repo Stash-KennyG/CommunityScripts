@@ -40,7 +40,13 @@
     const img = imageSelection.querySelector(".performer-image img");
     const label = imageSelection.querySelector(".d-flex.mt-3 h5.flex-grow-1");
     const node = ensureResolutionNode(imageSelection, label);
-    node.textContent = formatResolution(img);
+    const value = formatResolution(img);
+    node.textContent = value;
+    if (value) {
+      imageSelection.classList.add("cpir-has-resolution");
+    } else {
+      imageSelection.classList.remove("cpir-has-resolution");
+    }
   }
 
   function wire(imageSelection) {

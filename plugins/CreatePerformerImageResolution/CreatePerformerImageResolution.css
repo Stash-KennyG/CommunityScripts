@@ -4,3 +4,7 @@
   margin-bottom: 0.15rem;
   opacity: 0.95;
 }
+
+.performer-create-modal .image-selection.cpir-has-resolution {
+  height: calc(450px + 1.6rem);
+}
