@@ -13,22 +13,22 @@ ui:
 
 settings:
   enableFingerprintQuality:
-    displayName: Fingerprint quality (REQ-FP)
+    displayName: Fingerprint Quality
     description: >-
       Show match percentage and tier-colored background on stash-box fingerprint summary lines.
     type: BOOLEAN
   enableSaveLayout:
-    displayName: Save button layout (REQ-SAVE)
+    displayName: Save Button Layout
     description: >-
       Pin the Save action to the bottom of the right-hand column while the scene tagger is open.
     type: BOOLEAN
   enableMetadataMatchHints:
-    displayName: Metadata / filename hints (REQ-DM 1–4)
+    displayName: Metadata filename matching
     description: >-
       Highlight optional fields and entity rows when values plausibly match the scene title and tagger query.
     type: BOOLEAN
   enableMissingPerformerQA:
-    displayName: Missing performer QA (REQ-DM-5)
+    displayName: Missing Performer Warning
     description: >-
       Outline scene rows that show Save but have no Performer entity block in the stash-box panel.
     type: BOOLEAN
