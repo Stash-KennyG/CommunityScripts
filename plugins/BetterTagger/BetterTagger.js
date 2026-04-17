@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.0";
+  var PLUGIN_VERSION = "1.2.1";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -47,7 +47,7 @@
   var SCENE_DATA_QUERY =
     "query BtSceneData($id: ID!) {" +
     "  findScene(id: $id) {" +
-    "    id title code date director details urls play_count o_counter organized scene_markers { id } groups { group { id } } " +
+    "    id title code date director details urls tags { name } play_count o_counter organized scene_markers { id } groups { group { id } } " +
     "    files { id path size mod_time duration width height frame_rate bit_rate video_codec audio_codec fingerprints { type value } }" +
     "  }" +
     "}";
@@ -658,6 +658,36 @@
         .replace(/^director:\s*/i, "")
         .trim();
       compareField(directorField, existingScene.director, directorText);
+    }
+
+    // Tag badges in scene tagger: show existing local tags as green.
+    var existingTags = (existingScene.tags || [])
+      .map(function (t) {
+        return normalizeCompareText(t && t.name);
+      })
+      .filter(function (v) {
+        return !!v;
+      });
+    if (existingTags.length) {
+      var existingSet = {};
+      for (var ti = 0; ti < existingTags.length; ti++) existingSet[existingTags[ti]] = true;
+      var tagBadges = searchItem.querySelectorAll(".tag-item");
+      for (var bi = 0; bi < tagBadges.length; bi++) {
+        var badge = tagBadges[bi];
+        badge.classList.remove("bt-existing-match");
+        // Strip action buttons to compare just tag name text.
+        var clone = badge.cloneNode(true);
+        var cloneButtons = clone.querySelectorAll("button");
+        for (var cb = 0; cb < cloneButtons.length; cb++) {
+          if (cloneButtons[cb].parentNode) {
+            cloneButtons[cb].parentNode.removeChild(cloneButtons[cb]);
+          }
+        }
+        var tagName = normalizeCompareText(clone.textContent || "");
+        if (tagName && existingSet[tagName]) {
+          badge.classList.add("bt-existing-match");
+        }
+      }
     }
   }
 
