@@ -2,7 +2,7 @@ name: BetterTagger
 description: >-
   Scene tagger triage helpers: fingerprint match rate + tier colors, Save column alignment,
   optional-field / entity filename hints, and QA outline when performer source is missing.
-version: 1.0.2
+version: 1.0.6
 url: https://github.com/stashapp/CommunityScripts/tree/master/plugins/BetterTagger
 ui:
   javascript:
@@ -18,7 +18,7 @@ settings:
       Show match percentage and tier-colored background on stash-box fingerprint summary lines.
     type: BOOLEAN
   enableSaveLayout:
-    displayName: Save Button Layout
+    displayName: Pin Save Button
     description: >-
       Pin the Save action to the bottom of the right-hand column while the scene tagger is open.
     type: BOOLEAN

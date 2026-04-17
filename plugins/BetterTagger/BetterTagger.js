@@ -2,7 +2,8 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.0.1";
+  var PLUGIN_VERSION = "1.0.6";
+  var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
 
@@ -171,20 +172,64 @@
 
   function applySaveLayout(container, enabled) {
     if (!enabled || !container) return;
-    var buttons = container.querySelectorAll("button.btn.btn-primary");
-    for (var i = 0; i < buttons.length; i++) {
-      var btn = buttons[i];
+    if (DEBUG_SAVE_LAYOUT) {
+      console.debug("[BetterTagger] save-layout start", {
+        enabled: enabled,
+        containerFound: !!container,
+      });
+    }
+    var rows = container.querySelectorAll(
+      "div.mt-3.search-item .col-lg-6 > .row.no-gutters.mt-2.align-items-center.justify-content-end"
+    );
+    if (DEBUG_SAVE_LAYOUT) {
+      console.debug("[BetterTagger] save-layout row candidates", rows.length);
+    }
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var btn = row.querySelector("button");
+      if (!btn) {
+        if (DEBUG_SAVE_LAYOUT) {
+          console.debug("[BetterTagger] row missing button", { index: i, row: row });
+        }
+        continue;
+      }
+
+      // Keep v1's intent ("unambiguously Save") while avoiding strict locale lock:
+      // accept exact "Save", or fallback to the canonical save row shape in scene tagger.
       var label = (btn.textContent && btn.textContent.trim()) || "";
-      if (label !== "Save") continue;
-      var rightCol = btn.closest(".col-lg-6, .col-md-6");
+      var rowLooksLikeSceneSaveSlot = !!row.closest("div.mt-3.search-item");
+      if (DEBUG_SAVE_LAYOUT) {
+        console.debug("[BetterTagger] row/button inspection", {
+          index: i,
+          label: label,
+          buttonClass: btn.className,
+          rowClass: row.className,
+          rowLooksLikeSceneSaveSlot: rowLooksLikeSceneSaveSlot,
+        });
+      }
+      if (label !== "Save" && !rowLooksLikeSceneSaveSlot) {
+        if (DEBUG_SAVE_LAYOUT) {
+          console.debug("[BetterTagger] skip row (label/shape mismatch)", {
+            index: i,
+            label: label,
+          });
+        }
+        continue;
+      }
+
+      var rightCol = row.closest(".col-lg-6, .col-md-6");
       if (rightCol) {
         rightCol.classList.add("d-flex", "flex-column");
         rightCol.setAttribute("data-bt-save-layout", "1");
       }
-      var wrap = btn.parentElement;
-      if (wrap && wrap instanceof HTMLElement) {
-        wrap.classList.add("mt-auto", "w-100", "d-flex", "justify-content-end");
-        wrap.setAttribute("data-bt-save-layout", "1");
+
+      row.classList.add("mt-auto", "w-100", "d-flex", "justify-content-end");
+      row.setAttribute("data-bt-save-layout", "1");
+      if (DEBUG_SAVE_LAYOUT) {
+        console.debug("[BetterTagger] applied save layout", {
+          index: i,
+          rightColFound: !!rightCol,
+        });
       }
     }
   }
@@ -449,8 +494,68 @@
     legacy.__btGuardInstalled = true;
   }
 
+  function installLegacyErrorFilter() {
+    if (window.__btLegacyErrorFilterInstalled) return;
+
+    function isLegacyNoise(errLike) {
+      var text = "";
+      if (typeof errLike === "string") {
+        text = errLike;
+      } else if (errLike && typeof errLike.message === "string") {
+        text = errLike.message;
+      }
+      var stack = (errLike && errLike.stack) || "";
+      var body = String(text) + "\n" + String(stack);
+      return (
+        body.indexOf("parseSearchResultItem") !== -1 ||
+        body.indexOf("colorizeSearchItem") !== -1 ||
+        body.indexOf("Cannot read properties of undefined (reading 'date')") !== -1
+      );
+    }
+
+    window.addEventListener(
+      "error",
+      function (event) {
+        if (isLegacyNoise(event.error || event.message)) {
+          event.preventDefault();
+        }
+      },
+      true
+    );
+
+    window.addEventListener("unhandledrejection", function (event) {
+      var reason = event.reason;
+      if (isLegacyNoise(reason)) {
+        event.preventDefault();
+      }
+    });
+
+    // Legacy fallback paths used by some injected scripts:
+    // handle global onerror/onunhandledrejection directly as well.
+    var prevOnError = window.onerror;
+    window.onerror = function (message, source, lineno, colno, error) {
+      if (isLegacyNoise(error || message)) return true;
+      if (typeof prevOnError === "function") {
+        return prevOnError.apply(this, arguments);
+      }
+      return false;
+    };
+
+    var prevOnUnhandled = window.onunhandledrejection;
+    window.onunhandledrejection = function (event) {
+      if (event && isLegacyNoise(event.reason)) return true;
+      if (typeof prevOnUnhandled === "function") {
+        return prevOnUnhandled.apply(this, arguments);
+      }
+      return false;
+    };
+
+    window.__btLegacyErrorFilterInstalled = true;
+  }
+
   function init() {
     console.info("[BetterTagger] loaded", { version: PLUGIN_VERSION });
+    installLegacyErrorFilter();
     installLegacyCrashGuard();
     if (!window.BetterTaggerCore) {
       console.warn("[BetterTagger] BetterTaggerCore.js not loaded");
