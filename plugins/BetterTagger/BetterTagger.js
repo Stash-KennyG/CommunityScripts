@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.0.7";
+  var PLUGIN_VERSION = "1.0.8";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -20,6 +20,7 @@
 
   var state = {
     observer: null,
+    bootstrapObserver: null,
     observedContainer: null,
     debounceTimer: null,
     settings: {
@@ -433,12 +434,32 @@
     clearDmMarks(document);
   }
 
+  function ensureBootstrapObserver() {
+    if (state.bootstrapObserver) return;
+    var root = document.body || document.documentElement;
+    if (!root) return;
+
+    state.bootstrapObserver = new MutationObserver(function () {
+      attachIfNeeded();
+    });
+    state.bootstrapObserver.observe(root, { childList: true, subtree: true });
+    console.warn("[BetterTagger] bootstrap observer attached");
+  }
+
   function attachIfNeeded() {
     var container = findTaggerContainer();
     if (!container) {
       detachAll();
+      ensureBootstrapObserver();
       return;
     }
+
+    if (state.bootstrapObserver) {
+      state.bootstrapObserver.disconnect();
+      state.bootstrapObserver = null;
+      console.warn("[BetterTagger] bootstrap observer detached (container found)");
+    }
+
     bindQueryInput(container);
     if (state.observedContainer !== container) {
       if (state.observer) {
@@ -449,6 +470,7 @@
         scheduleRun();
       });
       state.observer.observe(container, { childList: true, subtree: true });
+      console.warn("[BetterTagger] container observer attached");
     }
     scheduleRun();
   }
@@ -568,6 +590,7 @@
     }
     loadPluginSettings().finally(function () {
       attachIfNeeded();
+      ensureBootstrapObserver();
     });
     var api = window.PluginApi;
     if (api && api.Event && api.Event.addEventListener) {
