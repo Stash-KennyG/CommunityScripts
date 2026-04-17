@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.0.6";
+  var PLUGIN_VERSION = "1.0.7";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -555,6 +555,12 @@
 
   function init() {
     console.info("[BetterTagger] loaded", { version: PLUGIN_VERSION });
+    window.__betterTaggerRuntime = {
+      loaded: true,
+      version: PLUGIN_VERSION,
+      ts: Date.now(),
+    };
+    console.warn("[BetterTagger] runtime marker", window.__betterTaggerRuntime);
     installLegacyErrorFilter();
     installLegacyCrashGuard();
     if (!window.BetterTaggerCore) {
