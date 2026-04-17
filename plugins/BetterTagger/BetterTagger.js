@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.0";
+  var PLUGIN_VERSION = "1.1.5";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -17,6 +17,14 @@
 
   var VERIFIED_SVG =
     '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="bt-verified-svg"><path fill="currentColor" d="M243.8 339.8C232.9 350.7 215.1 350.7 204.2 339.8L140.2 275.8C129.3 264.9 129.3 247.1 140.2 236.2C151.1 225.3 168.9 225.3 179.8 236.2L224 280.4L332.2 172.2C343.1 161.3 360.9 161.3 371.8 172.2C382.7 183.1 382.7 200.9 371.8 211.8L243.8 339.8zM512 256C512 397.4 397.4 512 256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256zM256 48C141.1 48 48 141.1 48 256C48 370.9 141.1 464 256 464C370.9 464 464 370.9 464 256C464 141.1 370.9 48 256 48z"></path></svg>';
+  var PLAY_ICON_SVG =
+    '<svg data-prefix="fas" data-icon="eye" class="bt-mini-icon" role="img" viewBox="0 0 576 512" aria-hidden="true"><path fill="currentColor" d="M288 32c-80.8 0-145.5 36.8-192.6 80.6-46.8 43.5-78.1 95.4-93 131.1-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6zM144 256a144 144 0 1 1 288 0 144 144 0 1 1-288 0zm144-64c0 35.3-28.7 64-64 64-11.5 0-22.3-3-31.7-8.4-1 10.9-.1 22.1 2.9 33.2 13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-12.2-45.7-55.5-74.8-101.1-70.8 5.3 9.3 8.4 20.1 8.4 31.7z"></path></svg>';
+  var O_ICON_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" class="bt-mini-icon" width="1em" height="1em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 36 36"><path fill="currentColor" d="M22.855.758L7.875 7.024l12.537 9.733c2.633 2.224 6.377 2.937 9.77 1.518c4.826-2.018 7.096-7.576 5.072-12.413C33.232 1.024 27.68-1.261 22.855.758zm-9.962 17.924L2.05 10.284L.137 23.529a7.993 7.993 0 0 0 2.958 7.803a8.001 8.001 0 0 0 9.798-12.65zm15.339 7.015l-8.156-4.69l-.033 9.223c-.088 2 .904 3.98 2.75 5.041a5.462 5.462 0 0 0 7.479-2.051c1.499-2.644.589-6.013-2.04-7.523z"></path><rect x="0" y="0" width="36" height="36" fill="rgba(0, 0, 0, 0)"></rect></svg>';
+  var MARKER_ICON_SVG =
+    '<svg data-prefix="fas" data-icon="location-dot" class="bt-mini-icon" role="img" viewBox="0 0 384 512" aria-hidden="true"><path fill="currentColor" d="M0 188.6C0 84.4 86 0 192 0S384 84.4 384 188.6c0 119.3-120.2 262.3-170.4 316.8-11.8 12.8-31.5 12.8-43.3 0-50.2-54.5-170.4-197.5-170.4-316.8zM192 256a64 64 0 1 0 0-128 64 64 0 1 0 0 128z"></path></svg>';
+  var GROUP_ICON_SVG =
+    '<svg data-prefix="fas" data-icon="film" class="bt-mini-icon" role="img" viewBox="0 0 448 512" aria-hidden="true"><path fill="currentColor" d="M0 96C0 60.7 28.7 32 64 32l320 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zM48 368l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0c-8.8 0-16 7.2-16 16zm304-16c-8.8 0-16 7.2-16 16l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0zM48 240l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0c-8.8 0-16 7.2-16 16zm304-16c-8.8 0-16 7.2-16 16l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0zM48 112l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16L64 96c-8.8 0-16 7.2-16 16zM352 96c-8.8 0-16 7.2-16 16l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0z"></path></svg>';
 
   var state = {
     observer: null,
@@ -485,13 +493,13 @@
   }
 
   function renderSceneBadges(searchItem, scene) {
-    var host = searchItem.querySelector(".scene-link");
-    if (!host) return;
-    var row = searchItem.querySelector(".bt-scene-badges");
+    var drawerCol = searchItem.querySelector(".original-scene-details .collapse .col.col-lg-6");
+    if (!drawerCol) return;
+    var row = drawerCol.querySelector(".bt-scene-badges");
     if (!row) {
       row = document.createElement("div");
       row.className = "bt-scene-badges";
-      host.insertAdjacentElement("afterend", row);
+      drawerCol.appendChild(row);
     }
 
     var markers = (scene.scene_markers && scene.scene_markers.length) || 0;
@@ -500,10 +508,26 @@
     var oCount = Number(scene.o_counter || 0);
     var organized = !!scene.organized;
     row.innerHTML =
-      '<span class="bt-mini-badge" title="Play Count">PLAY ' + playCount + "</span>" +
-      '<span class="bt-mini-badge" title="Markers">MARK ' + markers + "</span>" +
-      '<span class="bt-mini-badge" title="Groups">GRP ' + groups + "</span>" +
-      '<span class="bt-mini-badge" title="O Count">O ' + oCount + "</span>" +
+      '<span class="bt-mini-badge" title="Play Count">' +
+      PLAY_ICON_SVG +
+      '<span class="bt-mini-badge-value">' +
+      playCount +
+      "</span></span>" +
+      '<span class="bt-mini-badge" title="Markers">' +
+      MARKER_ICON_SVG +
+      '<span class="bt-mini-badge-value">' +
+      markers +
+      "</span></span>" +
+      '<span class="bt-mini-badge" title="Groups">' +
+      GROUP_ICON_SVG +
+      '<span class="bt-mini-badge-value">' +
+      groups +
+      "</span></span>" +
+      '<span class="bt-mini-badge" title="O Count">' +
+      O_ICON_SVG +
+      '<span class="bt-mini-badge-value">' +
+      oCount +
+      "</span></span>" +
       (organized
         ? '<span class="bt-mini-badge bt-mini-badge-ok" title="Organized">ORG</span>'
         : "");

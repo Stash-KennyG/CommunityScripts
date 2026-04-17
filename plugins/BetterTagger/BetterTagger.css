@@ -87,7 +87,8 @@
 }
 
 .bt-scene-badges {
-  margin-top: 0.35rem;
+  margin-top: 0.65rem;
+  margin-bottom: 0.35rem;
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
@@ -101,10 +102,22 @@
   padding: 0.2rem 0.45rem;
   color: #eef4f8;
   background: rgba(35, 64, 84, 0.75);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
 }
 
 .bt-mini-badge-ok {
   background: #0f9960;
+}
+
+.bt-mini-icon {
+  width: 0.78rem;
+  height: 0.78rem;
+}
+
+.bt-mini-badge-value {
+  line-height: 1;
 }
 
 .bt-scene-file-info {
