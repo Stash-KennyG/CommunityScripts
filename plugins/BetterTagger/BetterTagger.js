@@ -2,6 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
+  var PLUGIN_VERSION = "1.0.1";
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
 
@@ -411,7 +412,46 @@
     attachIfNeeded();
   }
 
+  function installLegacyCrashGuard() {
+    var legacy = window.Stash;
+    if (!legacy || legacy.__btGuardInstalled) return;
+
+    // Legacy userscripts may expose crashing handlers on window.Stash.
+    // Wrap known methods so they fail closed instead of flooding the console.
+    if (typeof legacy.parseSearchResultItem === "function") {
+      var originalParse = legacy.parseSearchResultItem;
+      legacy.parseSearchResultItem = function () {
+        try {
+          return originalParse.apply(this, arguments);
+        } catch (e) {
+          return {
+            title: "",
+            date: "",
+            url: "",
+            optionalFields: [],
+            entities: [],
+          };
+        }
+      };
+    }
+
+    if (typeof legacy.colorizeSearchItem === "function") {
+      var originalColorize = legacy.colorizeSearchItem;
+      legacy.colorizeSearchItem = function () {
+        try {
+          return originalColorize.apply(this, arguments);
+        } catch (e) {
+          return;
+        }
+      };
+    }
+
+    legacy.__btGuardInstalled = true;
+  }
+
   function init() {
+    console.info("[BetterTagger] loaded", { version: PLUGIN_VERSION });
+    installLegacyCrashGuard();
     if (!window.BetterTaggerCore) {
       console.warn("[BetterTagger] BetterTaggerCore.js not loaded");
     }
