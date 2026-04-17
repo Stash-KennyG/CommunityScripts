@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.3";
+  var PLUGIN_VERSION = "1.2.4";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -37,6 +37,7 @@
       enableMetadataMatchHints: true,
       enableMissingPerformerQA: true,
       enableSceneDrawerEnhancements: true,
+      enableDebugLogging: false,
     },
     settingsLoadedAt: 0,
     queryInputBound: null,
@@ -121,6 +122,15 @@
             drawerMerged = drawerMerged && readBool(cfg.enableSceneBadges, true);
           }
           state.settings.enableSceneDrawerEnhancements = drawerMerged;
+          state.settings.enableDebugLogging = readBool(
+            cfg.enableDebugLogging,
+            false
+          );
+          if (state.settings.enableDebugLogging) {
+            console.info(
+              "[BetterTagger] enableDebugLogging is on — expect [BetterTagger] … diagnostic lines"
+            );
+          }
         }
         state.settingsLoadedAt = Date.now();
       })
@@ -134,6 +144,46 @@
       return Promise.resolve();
     }
     return loadPluginSettings();
+  }
+
+  function btDebug(tag, payload) {
+    if (!state.settings || !state.settings.enableDebugLogging) return;
+    if (payload !== undefined) {
+      console.info("[BetterTagger]", tag, payload);
+    } else {
+      console.info("[BetterTagger]", tag);
+    }
+  }
+
+  /** Stash scene tagger: save row in StashSearchResult (OperationButton may omit btn-primary). */
+  var BT_TAGGER_SAVE_ROW =
+    ".row.no-gutters.mt-2.align-items-center.justify-content-end";
+
+  function isBtElementVisible(el) {
+    if (!el || !(el instanceof Element)) return false;
+    var st = window.getComputedStyle(el);
+    if (st.display === "none" || st.visibility === "hidden") return false;
+    var r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+
+  /**
+   * Save control inside one stash-box `li.search-result` (expanded / post-scrape).
+   */
+  function findSaveButtonInSearchResultLi(li) {
+    if (!li) return null;
+    var structural = li.querySelector(BT_TAGGER_SAVE_ROW + " button.btn");
+    if (structural && !structural.classList.contains("btn-link")) {
+      if (isBtElementVisible(structural)) return structural;
+    }
+    var primaries = li.querySelectorAll("button.btn.btn-primary");
+    for (var i = 0; i < primaries.length; i++) {
+      var b = primaries[i];
+      var label = (b.textContent && b.textContent.trim()) || "";
+      if (label !== "Save") continue;
+      if (isBtElementVisible(b)) return b;
+    }
+    return null;
   }
 
   function removeClasses(el, list) {
@@ -230,21 +280,26 @@
         containerFound: !!container,
       });
     }
-    var buttons = container.querySelectorAll("button.btn.btn-primary");
-    if (DEBUG_SAVE_LAYOUT) {
-      console.debug("[BetterTagger] save-layout button candidates", buttons.length);
-    }
-    for (var i = 0; i < buttons.length; i++) {
-      var btn = buttons[i];
+    var seen = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+
+    function pinOneSaveButton(btn, indexHint) {
+      if (!btn || !(btn instanceof HTMLElement)) return;
+      if (seen && seen.has(btn)) return;
       var label = (btn.textContent && btn.textContent.trim()) || "";
-      if (label !== "Save") continue;
+      var inStructural = !!btn.closest(BT_TAGGER_SAVE_ROW);
+      if (!inStructural) {
+        if (!btn.classList.contains("btn-primary")) return;
+        if (label !== "Save") return;
+      }
+      if (seen) seen.add(btn);
 
       var row = btn.parentElement;
-      if (!row || !(row instanceof HTMLElement)) continue;
+      if (!row || !(row instanceof HTMLElement)) return;
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] row/button inspection", {
-          index: i,
+          index: indexHint,
           label: label,
+          inStructural: inStructural,
           buttonClass: btn.className,
           rowClass: row && row.className,
         });
@@ -266,10 +321,26 @@
       row.setAttribute("data-bt-save-layout", "1");
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] applied save layout", {
-          index: i,
+          index: indexHint,
           rightColFound: !!rightCol,
         });
       }
+    }
+
+    var primaryCandidates = container.querySelectorAll("button.btn.btn-primary");
+    if (DEBUG_SAVE_LAYOUT) {
+      console.debug(
+        "[BetterTagger] save-layout primary candidates",
+        primaryCandidates.length
+      );
+    }
+    for (var i = 0; i < primaryCandidates.length; i++) {
+      pinOneSaveButton(primaryCandidates[i], i);
+    }
+
+    var resultLis = container.querySelectorAll("li.search-result");
+    for (var j = 0; j < resultLis.length; j++) {
+      pinOneSaveButton(findSaveButtonInSearchResultLi(resultLis[j]), "li-" + j);
     }
   }
 
@@ -386,10 +457,10 @@
   }
 
   function findVisibleSaveInSearchItem(searchItem) {
-    var buttons = searchItem.querySelectorAll("button.btn.btn-primary");
-    for (var i = 0; i < buttons.length; i++) {
-      var b = buttons[i];
-      if (b.textContent.trim() === "Save" && b.offsetParent !== null) return b;
+    var lis = searchItem.querySelectorAll("li.search-result");
+    for (var i = 0; i < lis.length; i++) {
+      var btn = findSaveButtonInSearchResultLi(lis[i]);
+      if (btn) return btn;
     }
     return null;
   }
@@ -625,49 +696,73 @@
     applyCompareResult(fieldEl, left === right);
   }
 
-  function findVisibleSaveButton(root) {
-    if (!root) return null;
-    var buttons = root.querySelectorAll("button.btn.btn-primary");
-    for (var i = 0; i < buttons.length; i++) {
-      var b = buttons[i];
-      if (!b || !b.textContent) continue;
-      if (b.textContent.trim() !== "Save") continue;
-      if (b.offsetParent === null) continue;
-      return b;
-    }
-    return null;
-  }
-
   /**
    * Root DOM for the scraped result row that is in "confirmation" mode.
    * Stash marks selected results as `li` with classes `search-result selected-result active`.
    * Fallback: any `li.search-result` subtree that contains a visible Save button.
    */
   function findScrapedConfirmationRoot(searchItem) {
-    if (!searchItem) return null;
+    if (!searchItem) {
+      btDebug("confirm-root", { miss: true, why: "no-searchItem" });
+      return null;
+    }
     var byClass =
       searchItem.querySelector("li.search-result.selected-result.active") ||
       searchItem.querySelector("li.search-result.active");
-    if (byClass && findVisibleSaveButton(byClass)) return byClass;
+    if (byClass && findSaveButtonInSearchResultLi(byClass)) {
+      return byClass;
+    }
 
     var rows = searchItem.querySelectorAll("li.search-result");
     for (var i = 0; i < rows.length; i++) {
       var li = rows[i];
-      if (findVisibleSaveButton(li)) return li;
+      if (findSaveButtonInSearchResultLi(li)) {
+        return li;
+      }
     }
+
+    btDebug("confirm-root", {
+      miss: true,
+      liCount: rows.length,
+      hadActiveLi: !!byClass,
+      activeLiClass: byClass && byClass.className,
+      firstStructural: !!(
+        rows[0] && rows[0].querySelector(BT_TAGGER_SAVE_ROW)
+      ),
+    });
     return null;
   }
 
   function applyExistingDataCompare(searchItem, existingScene) {
-    if (!searchItem || !existingScene) return;
+    if (!searchItem || !existingScene) {
+      btDebug("compare-skip", {
+        why: !searchItem ? "no-searchItem" : "no-existingScene",
+      });
+      return;
+    }
+    var sceneId = parseSceneIdFromSearchItem(searchItem);
     // Only compare when scrape UI is present: visible Save in the scraped result row.
     var activeResult = findScrapedConfirmationRoot(searchItem);
-    if (!activeResult) return;
+    if (!activeResult) {
+      btDebug("compare-skip", {
+        sceneId: sceneId,
+        why: "no-confirmation-root",
+      });
+      return;
+    }
 
     // Title field
     var titleField = activeResult.querySelector(
       ".scene-metadata h4 .optional-field-content"
     );
+    btDebug("compare-run", {
+      sceneId: sceneId,
+      titleField: !!titleField,
+      metaH5Count: activeResult.querySelectorAll(
+        ".scene-metadata h5 .optional-field-content"
+      ).length,
+      tagItemCount: activeResult.querySelectorAll(".tag-item").length,
+    });
     compareField(titleField, existingScene.title);
 
     // Code/date optional h5 fields in scene-metadata column
