@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.7";
+  var PLUGIN_VERSION = "1.1.9";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -36,8 +36,7 @@
       enableSaveLayout: true,
       enableMetadataMatchHints: true,
       enableMissingPerformerQA: true,
-      enableSceneFileInfo: true,
-      enableSceneBadges: true,
+      enableSceneDrawerEnhancements: true,
     },
     settingsLoadedAt: 0,
     queryInputBound: null,
@@ -60,6 +59,10 @@
   function readBool(raw, fallback) {
     if (raw === true || raw === "true") return true;
     if (raw === false || raw === "false") return false;
+    if (raw === 1 || raw === "1") return true;
+    if (raw === 0 || raw === "0") return false;
+    if (raw === "True") return true;
+    if (raw === "False") return false;
     return fallback;
   }
 
@@ -106,14 +109,18 @@
             cfg.enableMissingPerformerQA,
             true
           );
-          state.settings.enableSceneFileInfo = readBool(
-            cfg.enableSceneFileInfo,
+          var drawerMerged = readBool(
+            cfg.enableSceneDrawerEnhancements,
             true
           );
-          state.settings.enableSceneBadges = readBool(
-            cfg.enableSceneBadges,
-            true
-          );
+          // Legacy compatibility: if old toggles exist, they can still force false.
+          if (cfg.enableSceneFileInfo !== undefined) {
+            drawerMerged = drawerMerged && readBool(cfg.enableSceneFileInfo, true);
+          }
+          if (cfg.enableSceneBadges !== undefined) {
+            drawerMerged = drawerMerged && readBool(cfg.enableSceneBadges, true);
+          }
+          state.settings.enableSceneDrawerEnhancements = drawerMerged;
         }
         state.settingsLoadedAt = Date.now();
       })
@@ -587,8 +594,8 @@
       applyMissingPerformerQA(container, s.enableMissingPerformerQA);
       applySceneTaggerAdditions(
         container,
-        s.enableSceneFileInfo,
-        s.enableSceneBadges
+        s.enableSceneDrawerEnhancements,
+        s.enableSceneDrawerEnhancements
       );
     });
   }
