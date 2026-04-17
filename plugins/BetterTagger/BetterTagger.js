@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.5";
+  var PLUGIN_VERSION = "1.2.6";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -771,13 +771,21 @@
     var titleField = activeResult.querySelector(
       ".scene-metadata h4 .optional-field-content"
     );
+    var tagBadgesAll = activeResult.querySelectorAll(".tag-item");
+    var tagBadgeWithActions = 0;
+    for (var tbi = 0; tbi < tagBadgesAll.length; tbi++) {
+      if (tagBadgesAll[tbi].querySelector("button")) tagBadgeWithActions++;
+    }
     btDebug("compare-run", {
       sceneId: sceneId,
       titleField: !!titleField,
       metaH5Count: activeResult.querySelectorAll(
         ".scene-metadata h5 .optional-field-content"
       ).length,
-      tagItemCount: activeResult.querySelectorAll(".tag-item").length,
+      tagItemBadgeWithActions: tagBadgeWithActions,
+      tagSelectMultiValueCount: activeResult.querySelectorAll(
+        ".tag-select .react-select__multi-value"
+      ).length,
     });
     compareField(titleField, existingScene.title);
 
@@ -818,26 +826,39 @@
     if (existingTags.length) {
       var existingSet = {};
       for (var ti = 0; ti < existingTags.length; ti++) existingSet[existingTags[ti]] = true;
-      // Proposed incoming tags are the create/link badges in the scraped result
-      // (they include action buttons). Existing scene tags in the drawer should
-      // not be colorized against themselves.
+
+      function compareTagLabelTextFromEl(el) {
+        var clone = el.cloneNode(true);
+        var strip = clone.querySelectorAll(
+          "button, .react-select__multi-value__remove"
+        );
+        for (var si = 0; si < strip.length; si++) {
+          if (strip[si].parentNode) strip[si].parentNode.removeChild(strip[si]);
+        }
+        return normalizeCompareText(clone.textContent || "");
+      }
+
+      function markChipIfExisting(chipEl) {
+        if (!chipEl) return;
+        chipEl.classList.remove("bt-existing-match");
+        var nm = compareTagLabelTextFromEl(chipEl);
+        if (nm && existingSet[nm]) chipEl.classList.add("bt-existing-match");
+      }
+
+      // Scraped tags that still need create/link (Badge.tag-item + action buttons).
       var tagBadges = activeResult.querySelectorAll(".tag-item");
       for (var bi = 0; bi < tagBadges.length; bi++) {
         var badge = tagBadges[bi];
         if (!badge.querySelector("button")) continue;
-        badge.classList.remove("bt-existing-match");
-        // Strip action buttons to compare just tag name text.
-        var clone = badge.cloneNode(true);
-        var cloneButtons = clone.querySelectorAll("button");
-        for (var cb = 0; cb < cloneButtons.length; cb++) {
-          if (cloneButtons[cb].parentNode) {
-            cloneButtons[cb].parentNode.removeChild(cloneButtons[cb]);
-          }
-        }
-        var tagName = normalizeCompareText(clone.textContent || "");
-        if (tagName && existingSet[tagName]) {
-          badge.classList.add("bt-existing-match");
-        }
+        markChipIfExisting(badge);
+      }
+
+      // Tags already linked on the scene (TagSelect / react-select multi-value chips).
+      var multiVals = activeResult.querySelectorAll(
+        ".tag-select .react-select__multi-value"
+      );
+      for (var mi = 0; mi < multiVals.length; mi++) {
+        markChipIfExisting(multiVals[mi]);
       }
     }
   }
