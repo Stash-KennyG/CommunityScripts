@@ -2,7 +2,7 @@ name: BetterTagger
 description: >-
   Scene tagger triage helpers: fingerprint match rate + tier colors, Save column alignment,
   optional-field / entity filename hints, and QA outline when performer source is missing.
-version: 1.0.10
+version: 1.1.0
 url: https://github.com/stashapp/CommunityScripts/tree/master/plugins/BetterTagger
 ui:
   javascript:
@@ -31,4 +31,14 @@ settings:
     displayName: Missing Performer Warning
     description: >-
       Outline scene rows that show Save but have no Performer entity block in the stash-box panel.
+    type: BOOLEAN
+  enableSceneFileInfo:
+    displayName: Scene drawer file info
+    description: >-
+      Add Scene File Info-style details (hashes/path/size/duration/codecs) into the tagger scene drawer.
+    type: BOOLEAN
+  enableSceneBadges:
+    displayName: Scene badges
+    description: >-
+      Show scene badges for playcount, markers, groups, o-count, and organized state in tagger rows.
     type: BOOLEAN

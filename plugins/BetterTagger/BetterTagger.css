@@ -85,3 +85,58 @@
   padding-right: 0.25rem;
   padding-bottom: 0.25rem;
 }
+
+.bt-scene-badges {
+  margin-top: 0.35rem;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.bt-mini-badge {
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 0.2rem 0.45rem;
+  color: #eef4f8;
+  background: rgba(35, 64, 84, 0.75);
+}
+
+.bt-mini-badge-ok {
+  background: #0f9960;
+}
+
+.bt-scene-file-info {
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.bt-scene-file-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.bt-scene-file-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.bt-scene-file-dl dt {
+  margin: 0;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.bt-scene-file-dl dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

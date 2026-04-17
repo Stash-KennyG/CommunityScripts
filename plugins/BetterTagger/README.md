@@ -14,6 +14,8 @@ Copy this folder into your Stash plugins directory (or install from the Communit
 | `enableSaveLayout` | on | REQ-SAVE-* |
 | `enableMetadataMatchHints` | on | REQ-DM-1–4 |
 | `enableMissingPerformerQA` | on | REQ-DM-5 |
+| `enableSceneFileInfo` | on | Scene drawer enrichment |
+| `enableSceneBadges` | on | Scene badge overlay |
 
 ## Migration from Tampermonkey
 
@@ -34,6 +36,8 @@ Save detection uses `trim() === "Save"` like the legacy script. Non-English UI l
 | Scenes → Tagger with stash-box results | Fingerprint % + colors on `N / M fingerprints` lines; optional fields / entities reflect title + query haystack |
 | Active result with Save | Save row sits at bottom of right column; turning off `enableSaveLayout` removes flex classes |
 | Active result, no `Performer:` in `.mt-2` | Red outline on outer `div.mt-3.search-item` when `enableMissingPerformerQA` is on |
+| Drawer expanded in scene tagger | File Info block shows hashes/path/size/modtime/duration/dimensions/framerate/bitrate/codecs when `enableSceneFileInfo` is on |
+| Scene row headline area | Badge chips show playcount, markers, groups, O-count, organized status when `enableSceneBadges` is on |
 | Navigate away from tagger | No observer leak; no leftover `data-bt-*` styling on unrelated pages |
 | Rapid result switch / search refresh | No duplicate `%` fragments; fingerprint suffix lives in `.bt-fp-pct` only |
 | Tag / studio / performer tagger | No console errors; scene-specific selectors (`div.mt-3.search-item`) typically no-op |

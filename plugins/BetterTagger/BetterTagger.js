@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.0.9";
+  var PLUGIN_VERSION = "1.1.0";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -28,10 +28,22 @@
       enableSaveLayout: true,
       enableMetadataMatchHints: true,
       enableMissingPerformerQA: true,
+      enableSceneFileInfo: true,
+      enableSceneBadges: true,
     },
     settingsLoadedAt: 0,
     queryInputBound: null,
+    sceneDataById: {},
+    sceneDataPromiseById: {},
   };
+
+  var SCENE_DATA_QUERY =
+    "query BtSceneData($id: ID!) {" +
+    "  findScene(id: $id) {" +
+    "    id play_count o_counter organized scene_markers { id } groups { group { id } } " +
+    "    files { id path size mod_time duration width height frame_rate bit_rate video_codec audio_codec fingerprints { type value } }" +
+    "  }" +
+    "}";
 
   function core() {
     return window.BetterTaggerCore;
@@ -84,6 +96,14 @@
           );
           state.settings.enableMissingPerformerQA = readBool(
             cfg.enableMissingPerformerQA,
+            true
+          );
+          state.settings.enableSceneFileInfo = readBool(
+            cfg.enableSceneFileInfo,
+            true
+          );
+          state.settings.enableSceneBadges = readBool(
+            cfg.enableSceneBadges,
             true
           );
         }
@@ -147,10 +167,23 @@
     }
   }
 
+  function clearSceneTaggerAdditions(scope) {
+    var root = scope || document;
+    var badges = root.querySelectorAll(".bt-scene-badges");
+    for (var i = 0; i < badges.length; i++) {
+      if (badges[i].parentNode) badges[i].parentNode.removeChild(badges[i]);
+    }
+    var infoPanels = root.querySelectorAll(".bt-scene-file-info");
+    for (var j = 0; j < infoPanels.length; j++) {
+      if (infoPanels[j].parentNode) infoPanels[j].parentNode.removeChild(infoPanels[j]);
+    }
+  }
+
   function clearAllMarksInContainer(container) {
     clearSaveLayout(container);
     clearFingerprintMarks(container);
     clearDmMarks(container);
+    clearSceneTaggerAdditions(container);
   }
 
   function findTaggerContainer() {
@@ -372,6 +405,164 @@
     }
   }
 
+  function parseSceneIdFromSearchItem(searchItem) {
+    var sceneLink = searchItem.querySelector("a.scene-link[href*='/scenes/']");
+    if (!sceneLink || !sceneLink.getAttribute) return null;
+    var href = sceneLink.getAttribute("href") || "";
+    var match = href.match(/\/scenes\/([0-9]+)/);
+    return match ? match[1] : null;
+  }
+
+  function getFingerprintValue(file, kind) {
+    if (!file || !file.fingerprints) return "";
+    for (var i = 0; i < file.fingerprints.length; i++) {
+      var fp = file.fingerprints[i];
+      if (fp.type === kind) return fp.value || "";
+    }
+    return "";
+  }
+
+  function formatBytes(size) {
+    var n = Number(size || 0);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    var units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    var idx = 0;
+    while (n >= 1024 && idx < units.length - 1) {
+      n /= 1024;
+      idx++;
+    }
+    var value = idx === 0 ? String(Math.round(n)) : n.toFixed(2).replace(/\.00$/, "");
+    return value + " " + units[idx];
+  }
+
+  function formatSeconds(s) {
+    var n = Number(s || 0);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    var total = Math.round(n);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var sec = total % 60;
+    if (h > 0) return h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+    return m + ":" + String(sec).padStart(2, "0");
+  }
+
+  function formatBitRate(bitsPerSecond) {
+    var n = Number(bitsPerSecond || 0);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    return (n / 1000000).toFixed(2).replace(/\.00$/, "") + " mbps";
+  }
+
+  function formatDate(msOrIso) {
+    if (!msOrIso) return "";
+    var d = new Date(msOrIso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString();
+  }
+
+  function sceneDataCacheGet(sceneId) {
+    return state.sceneDataById[sceneId] || null;
+  }
+
+  function fetchSceneData(sceneId) {
+    if (!sceneId) return Promise.resolve(null);
+    if (state.sceneDataById[sceneId]) return Promise.resolve(state.sceneDataById[sceneId]);
+    if (state.sceneDataPromiseById[sceneId]) return state.sceneDataPromiseById[sceneId];
+
+    state.sceneDataPromiseById[sceneId] = gql(SCENE_DATA_QUERY, { id: sceneId })
+      .then(function (resp) {
+        if (resp && resp.data && resp.data.findScene) {
+          state.sceneDataById[sceneId] = resp.data.findScene;
+        }
+        return state.sceneDataById[sceneId] || null;
+      })
+      .catch(function () {
+        return null;
+      })
+      .finally(function () {
+        delete state.sceneDataPromiseById[sceneId];
+      });
+    return state.sceneDataPromiseById[sceneId];
+  }
+
+  function renderSceneBadges(searchItem, scene) {
+    var host = searchItem.querySelector(".scene-link");
+    if (!host) return;
+    var row = searchItem.querySelector(".bt-scene-badges");
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "bt-scene-badges";
+      host.insertAdjacentElement("afterend", row);
+    }
+
+    var markers = (scene.scene_markers && scene.scene_markers.length) || 0;
+    var groups = (scene.groups && scene.groups.length) || 0;
+    var playCount = Number(scene.play_count || 0);
+    var oCount = Number(scene.o_counter || 0);
+    var organized = !!scene.organized;
+    row.innerHTML =
+      '<span class="bt-mini-badge" title="Play Count">PLAY ' + playCount + "</span>" +
+      '<span class="bt-mini-badge" title="Markers">MARK ' + markers + "</span>" +
+      '<span class="bt-mini-badge" title="Groups">GRP ' + groups + "</span>" +
+      '<span class="bt-mini-badge" title="O Count">O ' + oCount + "</span>" +
+      (organized
+        ? '<span class="bt-mini-badge bt-mini-badge-ok" title="Organized">ORG</span>'
+        : "");
+  }
+
+  function renderSceneFileInfo(searchItem, scene) {
+    var drawerCol = searchItem.querySelector(".original-scene-details .collapse .col.col-lg-6");
+    if (!drawerCol) return;
+    var file = scene.files && scene.files.length ? scene.files[0] : null;
+    if (!file) return;
+    var panel = drawerCol.querySelector(".bt-scene-file-info");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.className = "bt-scene-file-info";
+      drawerCol.appendChild(panel);
+    }
+    var oshash = getFingerprintValue(file, "oshash");
+    var phash = getFingerprintValue(file, "phash");
+    var md5 = getFingerprintValue(file, "md5");
+    var dims = file.width && file.height ? file.width + " x " + file.height : "";
+    panel.innerHTML =
+      '<h6 class="bt-scene-file-title">File Info</h6>' +
+      '<dl class="bt-scene-file-dl">' +
+      (oshash ? "<dt>oshash</dt><dd>" + oshash + "</dd>" : "") +
+      (md5 ? "<dt>md5</dt><dd>" + md5 + "</dd>" : "") +
+      (phash ? "<dt>phash</dt><dd>" + phash + "</dd>" : "") +
+      (file.path ? "<dt>path</dt><dd>" + file.path + "</dd>" : "") +
+      (file.size ? "<dt>size</dt><dd>" + formatBytes(file.size) + "</dd>" : "") +
+      (file.mod_time ? "<dt>mod time</dt><dd>" + formatDate(file.mod_time) + "</dd>" : "") +
+      (file.duration ? "<dt>duration</dt><dd>" + formatSeconds(file.duration) + "</dd>" : "") +
+      (dims ? "<dt>dimensions</dt><dd>" + dims + "</dd>" : "") +
+      (file.frame_rate ? "<dt>fps</dt><dd>" + Number(file.frame_rate).toFixed(2).replace(/\.00$/, "") + "</dd>" : "") +
+      (file.bit_rate ? "<dt>bitrate</dt><dd>" + formatBitRate(file.bit_rate) + "</dd>" : "") +
+      (file.video_codec ? "<dt>video</dt><dd>" + file.video_codec + "</dd>" : "") +
+      (file.audio_codec ? "<dt>audio</dt><dd>" + file.audio_codec + "</dd>" : "") +
+      "</dl>";
+  }
+
+  function applySceneTaggerAdditions(container, enableFileInfo, enableBadges) {
+    if (!container || (!enableFileInfo && !enableBadges)) return;
+    var rows = container.querySelectorAll("div.mt-3.search-item");
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var sceneId = parseSceneIdFromSearchItem(row);
+      if (!sceneId) continue;
+
+      var scene = sceneDataCacheGet(sceneId);
+      if (!scene) {
+        fetchSceneData(sceneId).then(function () {
+          scheduleRun();
+        });
+        continue;
+      }
+
+      if (enableBadges) renderSceneBadges(row, scene);
+      if (enableFileInfo) renderSceneFileInfo(row, scene);
+    }
+  }
+
   function runPass() {
     var container = findTaggerContainer();
     if (!container) {
@@ -385,6 +576,11 @@
       applyFingerprints(container, s.enableFingerprintQuality);
       applyMetadataHints(container, s.enableMetadataMatchHints);
       applyMissingPerformerQA(container, s.enableMissingPerformerQA);
+      applySceneTaggerAdditions(
+        container,
+        s.enableSceneFileInfo,
+        s.enableSceneBadges
+      );
     });
   }
 
