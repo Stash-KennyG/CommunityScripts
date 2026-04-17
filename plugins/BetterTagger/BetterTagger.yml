@@ -1,0 +1,34 @@
+name: BetterTagger
+description: >-
+  Scene tagger triage helpers: fingerprint match rate + tier colors, Save column alignment,
+  optional-field / entity filename hints, and QA outline when performer source is missing.
+version: 1.0.0
+url: https://github.com/stashapp/CommunityScripts/tree/master/plugins/BetterTagger
+ui:
+  javascript:
+    - BetterTaggerCore.js
+    - BetterTagger.js
+  css:
+    - BetterTagger.css
+
+settings:
+  enableFingerprintQuality:
+    displayName: Fingerprint quality (REQ-FP)
+    description: >-
+      Show match percentage and tier-colored background on stash-box fingerprint summary lines.
+    type: BOOLEAN
+  enableSaveLayout:
+    displayName: Save button layout (REQ-SAVE)
+    description: >-
+      Pin the Save action to the bottom of the right-hand column while the scene tagger is open.
+    type: BOOLEAN
+  enableMetadataMatchHints:
+    displayName: Metadata / filename hints (REQ-DM 1–4)
+    description: >-
+      Highlight optional fields and entity rows when values plausibly match the scene title and tagger query.
+    type: BOOLEAN
+  enableMissingPerformerQA:
+    displayName: Missing performer QA (REQ-DM-5)
+    description: >-
+      Outline scene rows that show Save but have no Performer entity block in the stash-box panel.
+    type: BOOLEAN

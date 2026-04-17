@@ -1,0 +1,57 @@
+/* Fingerprint tier tokens (REQ-FP-2) — backgrounds tuned for white text */
+.bt-fp-severe {
+  background-color: #b71c1c;
+  color: #fff;
+}
+.bt-fp-warn {
+  background-color: #ff6f00;
+  color: #fff;
+}
+.bt-fp-caution {
+  background-color: #bbbe64;
+  color: #1a1a1a;
+}
+.bt-fp-good {
+  background-color: #00796b;
+  color: #fff;
+}
+
+.bt-fp-pct {
+  font-weight: 600;
+  margin-left: 0.15em;
+}
+
+/* Metadata hints (REQ-DM) */
+.bt-dm-strong {
+  background-color: #00796b;
+  color: #fff;
+}
+.bt-dm-strong a {
+  color: #fff !important;
+}
+
+.bt-dm-soft {
+  background-color: rgba(0, 121, 107, var(--bt-dm-soft-a, 0.35));
+  color: #fff;
+}
+.bt-dm-soft a {
+  color: #fff !important;
+}
+
+.bt-verified-wrap {
+  display: inline-block;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  cursor: help;
+}
+.bt-verified-wrap svg {
+  width: 1em;
+  height: 1em;
+  color: #0f9960;
+}
+
+/* Missing performer QA (REQ-DM-5) */
+.bt-qa-missing-performer {
+  outline: 2px solid #b71c1c;
+  outline-offset: 2px;
+}
