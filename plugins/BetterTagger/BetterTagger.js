@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.1";
+  var PLUGIN_VERSION = "1.2.2";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -627,15 +627,19 @@
 
   function applyExistingDataCompare(searchItem, existingScene) {
     if (!searchItem || !existingScene) return;
+    // Only compare within the active scraped match card.
+    // Before scrape, this card does not exist, so we intentionally no-op.
+    var activeResult = searchItem.querySelector("li.search-result.active");
+    if (!activeResult) return;
 
     // Title field
-    var titleField = searchItem.querySelector(
+    var titleField = activeResult.querySelector(
       ".scene-metadata h4 .optional-field-content"
     );
     compareField(titleField, existingScene.title);
 
     // Code/date optional h5 fields in scene-metadata column
-    var metaFields = searchItem.querySelectorAll(
+    var metaFields = activeResult.querySelectorAll(
       ".scene-metadata h5 .optional-field-content"
     );
     for (var i = 0; i < metaFields.length; i++) {
@@ -650,7 +654,7 @@
     }
 
     // Director field
-    var directorField = searchItem.querySelector(
+    var directorField = activeResult.querySelector(
       ".d-flex.flex-column h5 .optional-field-content"
     );
     if (directorField) {
@@ -671,9 +675,13 @@
     if (existingTags.length) {
       var existingSet = {};
       for (var ti = 0; ti < existingTags.length; ti++) existingSet[existingTags[ti]] = true;
-      var tagBadges = searchItem.querySelectorAll(".tag-item");
+      // Proposed incoming tags are the create/link badges in the scraped result
+      // (they include action buttons). Existing scene tags in the drawer should
+      // not be colorized against themselves.
+      var tagBadges = activeResult.querySelectorAll(".tag-item");
       for (var bi = 0; bi < tagBadges.length; bi++) {
         var badge = tagBadges[bi];
+        if (!badge.querySelector("button")) continue;
         badge.classList.remove("bt-existing-match");
         // Strip action buttons to compare just tag name text.
         var clone = badge.cloneNode(true);
