@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.10";
+  var PLUGIN_VERSION = "1.2.0";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -47,7 +47,7 @@
   var SCENE_DATA_QUERY =
     "query BtSceneData($id: ID!) {" +
     "  findScene(id: $id) {" +
-    "    id play_count o_counter organized scene_markers { id } groups { group { id } } " +
+    "    id title code date director details urls play_count o_counter organized scene_markers { id } groups { group { id } } " +
     "    files { id path size mod_time duration width height frame_rate bit_rate video_codec audio_codec fingerprints { type value } }" +
     "  }" +
     "}";
@@ -184,6 +184,10 @@
     var qa = root.querySelectorAll(".bt-qa-missing-performer");
     for (var k = 0; k < qa.length; k++) {
       qa[k].classList.remove("bt-qa-missing-performer");
+    }
+    var compare = root.querySelectorAll(".bt-existing-match, .bt-existing-mismatch");
+    for (var c = 0; c < compare.length; c++) {
+      compare[c].classList.remove("bt-existing-match", "bt-existing-mismatch");
     }
   }
 
@@ -585,6 +589,78 @@
     }
   }
 
+  function normalizeCompareText(v) {
+    return String(v || "").trim().toUpperCase();
+  }
+
+  function applyCompareResult(fieldEl, isMatch) {
+    if (!fieldEl) return;
+    fieldEl.classList.remove("bt-existing-match", "bt-existing-mismatch");
+
+    if (isMatch === true) {
+      // Exact local match wins over metadata highlight signals.
+      fieldEl.classList.remove("bt-dm-strong", "bt-dm-soft");
+      fieldEl.style.removeProperty("--bt-dm-soft-a");
+      var verified = fieldEl.querySelector(".bt-verified-wrap");
+      if (verified && verified.parentNode) verified.parentNode.removeChild(verified);
+      fieldEl.classList.add("bt-existing-match");
+      return;
+    }
+    if (isMatch === false) {
+      fieldEl.classList.add("bt-existing-mismatch");
+    }
+  }
+
+  function compareField(fieldEl, existingValue, displayedOverride) {
+    if (!fieldEl) return;
+    var right = normalizeCompareText(existingValue);
+    if (!right) {
+      // underlying null/empty => no behavior
+      applyCompareResult(fieldEl, null);
+      return;
+    }
+    var left = normalizeCompareText(
+      displayedOverride !== undefined ? displayedOverride : fieldEl.textContent
+    );
+    applyCompareResult(fieldEl, left === right);
+  }
+
+  function applyExistingDataCompare(searchItem, existingScene) {
+    if (!searchItem || !existingScene) return;
+
+    // Title field
+    var titleField = searchItem.querySelector(
+      ".scene-metadata h4 .optional-field-content"
+    );
+    compareField(titleField, existingScene.title);
+
+    // Code/date optional h5 fields in scene-metadata column
+    var metaFields = searchItem.querySelectorAll(
+      ".scene-metadata h5 .optional-field-content"
+    );
+    for (var i = 0; i < metaFields.length; i++) {
+      var field = metaFields[i];
+      var text = (field.textContent || "").trim();
+      if (!text) continue;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        compareField(field, existingScene.date);
+      } else {
+        compareField(field, existingScene.code);
+      }
+    }
+
+    // Director field
+    var directorField = searchItem.querySelector(
+      ".d-flex.flex-column h5 .optional-field-content"
+    );
+    if (directorField) {
+      var directorText = (directorField.textContent || "")
+        .replace(/^director:\s*/i, "")
+        .trim();
+      compareField(directorField, existingScene.director, directorText);
+    }
+  }
+
   function runPass() {
     var container = findTaggerContainer();
     if (!container) {
@@ -603,6 +679,25 @@
         s.enableSceneDrawerEnhancements,
         s.enableSceneDrawerEnhancements
       );
+
+      // SceneTaggerColorizer-style compare against existing local scene data:
+      // - null underlying: no behavior
+      // - exact (trim/upper): green + suppress other highlights
+      // - non-null mismatch: red
+      var rows = container.querySelectorAll("div.mt-3.search-item");
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var sceneId = parseSceneIdFromSearchItem(row);
+        if (!sceneId) continue;
+        var existingScene = sceneDataCacheGet(sceneId);
+        if (!existingScene) {
+          fetchSceneData(sceneId).then(function () {
+            scheduleRun();
+          });
+          continue;
+        }
+        applyExistingDataCompare(row, existingScene);
+      }
     });
   }
 

@@ -54,6 +54,14 @@
   color: #fff !important;
 }
 
+.bt-existing-match {
+  color: #1fb157 !important;
+}
+
+.bt-existing-mismatch {
+  color: #d9534f !important;
+}
+
 .bt-verified-wrap {
   display: inline-block;
   margin-left: 0.35rem;
