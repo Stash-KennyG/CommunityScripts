@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.2";
+  var PLUGIN_VERSION = "1.2.3";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -625,11 +625,43 @@
     applyCompareResult(fieldEl, left === right);
   }
 
+  function findVisibleSaveButton(root) {
+    if (!root) return null;
+    var buttons = root.querySelectorAll("button.btn.btn-primary");
+    for (var i = 0; i < buttons.length; i++) {
+      var b = buttons[i];
+      if (!b || !b.textContent) continue;
+      if (b.textContent.trim() !== "Save") continue;
+      if (b.offsetParent === null) continue;
+      return b;
+    }
+    return null;
+  }
+
+  /**
+   * Root DOM for the scraped result row that is in "confirmation" mode.
+   * Stash marks selected results as `li` with classes `search-result selected-result active`.
+   * Fallback: any `li.search-result` subtree that contains a visible Save button.
+   */
+  function findScrapedConfirmationRoot(searchItem) {
+    if (!searchItem) return null;
+    var byClass =
+      searchItem.querySelector("li.search-result.selected-result.active") ||
+      searchItem.querySelector("li.search-result.active");
+    if (byClass && findVisibleSaveButton(byClass)) return byClass;
+
+    var rows = searchItem.querySelectorAll("li.search-result");
+    for (var i = 0; i < rows.length; i++) {
+      var li = rows[i];
+      if (findVisibleSaveButton(li)) return li;
+    }
+    return null;
+  }
+
   function applyExistingDataCompare(searchItem, existingScene) {
     if (!searchItem || !existingScene) return;
-    // Only compare within the active scraped match card.
-    // Before scrape, this card does not exist, so we intentionally no-op.
-    var activeResult = searchItem.querySelector("li.search-result.active");
+    // Only compare when scrape UI is present: visible Save in the scraped result row.
+    var activeResult = findScrapedConfirmationRoot(searchItem);
     if (!activeResult) return;
 
     // Title field
