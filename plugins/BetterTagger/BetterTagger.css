@@ -122,33 +122,27 @@
 
 .bt-scene-file-info {
   margin-top: 0.65rem;
-  padding-top: 0.45rem;
+  padding-top: 0.35rem;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.bt-scene-file-title {
-  margin: 0 0 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  opacity: 0.9;
-}
-
 .bt-scene-file-dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.15rem 0.5rem;
   margin: 0;
-  font-size: 0.78rem;
+  font-size: inherit;
+  line-height: inherit;
+  grid-column-gap: 10px;
+  grid-template-columns: minmax(16.67%, auto) 1fr;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .bt-scene-file-dl dt {
-  margin: 0;
-  opacity: 0.75;
-  font-weight: 600;
+  margin: 0 0 0.15rem;
+  font-weight: 700;
 }
 
 .bt-scene-file-dl dd {
-  margin: 0;
+  margin: 0 0 0.15rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

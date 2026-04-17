@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.5";
+  var PLUGIN_VERSION = "1.1.6";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -549,8 +549,7 @@
     var md5 = getFingerprintValue(file, "md5");
     var dims = file.width && file.height ? file.width + " x " + file.height : "";
     panel.innerHTML =
-      '<h6 class="bt-scene-file-title">File Info</h6>' +
-      '<dl class="bt-scene-file-dl">' +
+      '<dl class="container scene-file-info details-list bt-scene-file-dl">' +
       (oshash ? "<dt>oshash</dt><dd>" + oshash + "</dd>" : "") +
       (md5 ? "<dt>md5</dt><dd>" + md5 + "</dd>" : "") +
       (phash ? "<dt>phash</dt><dd>" + phash + "</dd>" : "") +
