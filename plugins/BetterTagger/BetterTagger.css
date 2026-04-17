@@ -1,18 +1,34 @@
 /* Fingerprint tier tokens (REQ-FP-2) — backgrounds tuned for white text */
 .bt-fp-severe {
-  background-color: #b71c1c;
+  background-color: transparent;
+  background-image: linear-gradient(#b71c1c, #b71c1c);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 1.35em) 100%;
+  background-position: right center;
   color: #fff;
 }
 .bt-fp-warn {
-  background-color: #ff6f00;
+  background-color: transparent;
+  background-image: linear-gradient(#ff6f00, #ff6f00);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 1.35em) 100%;
+  background-position: right center;
   color: #fff;
 }
 .bt-fp-caution {
-  background-color: #bbbe64;
+  background-color: transparent;
+  background-image: linear-gradient(#bbbe64, #bbbe64);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 1.35em) 100%;
+  background-position: right center;
   color: #1a1a1a;
 }
 .bt-fp-good {
-  background-color: #00796b;
+  background-color: transparent;
+  background-image: linear-gradient(#00796b, #00796b);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 1.35em) 100%;
+  background-position: right center;
   color: #fff;
 }
 
