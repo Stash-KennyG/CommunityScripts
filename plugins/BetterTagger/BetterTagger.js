@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.4";
+  var PLUGIN_VERSION = "1.2.5";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -152,6 +152,14 @@
       console.info("[BetterTagger]", tag, payload);
     } else {
       console.info("[BetterTagger]", tag);
+    }
+  }
+
+  function queueMicrotaskCompat(fn) {
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(fn);
+    } else {
+      Promise.resolve().then(fn);
     }
   }
 
@@ -721,15 +729,18 @@
       }
     }
 
-    btDebug("confirm-root", {
-      miss: true,
-      liCount: rows.length,
-      hadActiveLi: !!byClass,
-      activeLiClass: byClass && byClass.className,
-      firstStructural: !!(
-        rows[0] && rows[0].querySelector(BT_TAGGER_SAVE_ROW)
-      ),
-    });
+    // Idle rows have no stash-box `li.search-result` yet — logging that every pass is noise.
+    if (rows.length > 0 || byClass) {
+      btDebug("confirm-root", {
+        miss: true,
+        liCount: rows.length,
+        hadActiveLi: !!byClass,
+        activeLiClass: byClass && byClass.className,
+        firstStructural: !!(
+          rows[0] && rows[0].querySelector(BT_TAGGER_SAVE_ROW)
+        ),
+      });
+    }
     return null;
   }
 
@@ -744,10 +755,15 @@
     // Only compare when scrape UI is present: visible Save in the scraped result row.
     var activeResult = findScrapedConfirmationRoot(searchItem);
     if (!activeResult) {
-      btDebug("compare-skip", {
-        sceneId: sceneId,
-        why: "no-confirmation-root",
-      });
+      var pendingResults = searchItem.querySelectorAll("li.search-result")
+        .length;
+      if (pendingResults > 0) {
+        btDebug("compare-skip", {
+          sceneId: sceneId,
+          why: "no-confirmation-root",
+          liSearchResultCount: pendingResults,
+        });
+      }
       return;
     }
 
@@ -833,35 +849,58 @@
       return;
     }
     ensureSettings().then(function () {
-      var s = state.settings;
-      clearAllMarksInContainer(container);
-      applySaveLayout(container, s.enableSaveLayout);
-      applyFingerprints(container, s.enableFingerprintQuality);
-      applyMetadataHints(container, s.enableMetadataMatchHints);
-      applyMissingPerformerQA(container, s.enableMissingPerformerQA);
-      applySceneTaggerAdditions(
-        container,
-        s.enableSceneDrawerEnhancements,
-        s.enableSceneDrawerEnhancements
-      );
+      var obs = state.observer;
+      var observed = state.observedContainer;
+      var pauseObserver =
+        obs && observed && container && observed === container;
+      if (pauseObserver) {
+        obs.disconnect();
+      }
+      try {
+        var s = state.settings;
+        clearAllMarksInContainer(container);
+        applySaveLayout(container, s.enableSaveLayout);
+        applyFingerprints(container, s.enableFingerprintQuality);
+        applyMetadataHints(container, s.enableMetadataMatchHints);
+        applyMissingPerformerQA(container, s.enableMissingPerformerQA);
+        applySceneTaggerAdditions(
+          container,
+          s.enableSceneDrawerEnhancements,
+          s.enableSceneDrawerEnhancements
+        );
 
-      // SceneTaggerColorizer-style compare against existing local scene data:
-      // - null underlying: no behavior
-      // - exact (trim/upper): green + suppress other highlights
-      // - non-null mismatch: red
-      var rows = container.querySelectorAll("div.mt-3.search-item");
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var sceneId = parseSceneIdFromSearchItem(row);
-        if (!sceneId) continue;
-        var existingScene = sceneDataCacheGet(sceneId);
-        if (!existingScene) {
-          fetchSceneData(sceneId).then(function () {
-            scheduleRun();
-          });
-          continue;
+        // SceneTaggerColorizer-style compare against existing local scene data:
+        // - null underlying: no behavior
+        // - exact (trim/upper): green + suppress other highlights
+        // - non-null mismatch: red
+        var rows = container.querySelectorAll("div.mt-3.search-item");
+        for (var i = 0; i < rows.length; i++) {
+          var row = rows[i];
+          var sceneId = parseSceneIdFromSearchItem(row);
+          if (!sceneId) continue;
+          var existingScene = sceneDataCacheGet(sceneId);
+          if (!existingScene) {
+            fetchSceneData(sceneId).then(function () {
+              scheduleRun();
+            });
+            continue;
+          }
+          applyExistingDataCompare(row, existingScene);
         }
-        applyExistingDataCompare(row, existingScene);
+      } finally {
+        if (pauseObserver) {
+          queueMicrotaskCompat(function () {
+            if (state.observer !== obs) return;
+            var root = state.observedContainer;
+            if (!root || !(root instanceof Node)) return;
+            try {
+              if (!document.documentElement.contains(root)) return;
+            } catch (e) {
+              return;
+            }
+            obs.observe(root, { childList: true, subtree: true });
+          });
+        }
       }
     });
   }
