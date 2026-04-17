@@ -94,8 +94,8 @@
 }
 
 .bt-mini-badge {
-  font-size: 20pt;
-  line-height: 20pt;
+  font-size: 14pt;
+  line-height: 14pt;
   font-weight: 600;
   border-radius: 10px;
   padding: 0.2rem 0.45rem;
@@ -111,13 +111,13 @@
 }
 
 .bt-mini-icon {
-  width: 20pt;
-  height: 20pt;
+  width: 14pt;
+  height: 14pt;
 }
 
 .bt-mini-badge-value {
-  font-size: 20pt;
-  line-height: 20pt;
+  font-size: 14pt;
+  line-height: 14pt;
 }
 
 .bt-scene-file-info {
