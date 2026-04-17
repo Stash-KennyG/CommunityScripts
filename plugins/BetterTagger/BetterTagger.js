@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.6";
+  var PLUGIN_VERSION = "1.1.7";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -214,44 +214,30 @@
         containerFound: !!container,
       });
     }
-    var rows = container.querySelectorAll(
-      "div.mt-3.search-item .col-lg-6 > .row.no-gutters.mt-2.align-items-center.justify-content-end"
-    );
+    var buttons = container.querySelectorAll("button");
     if (DEBUG_SAVE_LAYOUT) {
-      console.debug("[BetterTagger] save-layout row candidates", rows.length);
+      console.debug("[BetterTagger] save-layout button candidates", buttons.length);
     }
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var btn = row.querySelector("button");
-      if (!btn) {
-        if (DEBUG_SAVE_LAYOUT) {
-          console.debug("[BetterTagger] row missing button", { index: i, row: row });
-        }
-        continue;
-      }
-
-      // Keep v1's intent ("unambiguously Save") while avoiding strict locale lock:
-      // accept exact "Save", or fallback to the canonical save row shape in scene tagger.
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
       var label = (btn.textContent && btn.textContent.trim()) || "";
-      var rowLooksLikeSceneSaveSlot = !!row.closest("div.mt-3.search-item");
+      if (label !== "Save") continue;
+
+      var searchItem = btn.closest("div.mt-3.search-item");
+      if (!searchItem) continue;
+      var row = btn.parentElement;
+      if (!row) continue;
+      var rowLooksLikeSceneSaveSlot = row.classList.contains("row");
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] row/button inspection", {
           index: i,
           label: label,
           buttonClass: btn.className,
-          rowClass: row.className,
+          rowClass: row && row.className,
           rowLooksLikeSceneSaveSlot: rowLooksLikeSceneSaveSlot,
         });
       }
-      if (label !== "Save" && !rowLooksLikeSceneSaveSlot) {
-        if (DEBUG_SAVE_LAYOUT) {
-          console.debug("[BetterTagger] skip row (label/shape mismatch)", {
-            index: i,
-            label: label,
-          });
-        }
-        continue;
-      }
+      if (!rowLooksLikeSceneSaveSlot) continue;
 
       var rightCol = row.closest(".col-lg-6, .col-md-6");
       if (rightCol) {

@@ -81,9 +81,8 @@
 .bt-save-row {
   margin-top: auto;
   width: 100%;
+  display: flex;
   justify-content: flex-end;
-  padding-right: 0.25rem;
-  padding-bottom: 0.25rem;
 }
 
 .bt-scene-badges {
@@ -95,8 +94,8 @@
 }
 
 .bt-mini-badge {
-  font-size: 0.72rem;
-  line-height: 1;
+  font-size: 20pt;
+  line-height: 20pt;
   font-weight: 600;
   border-radius: 10px;
   padding: 0.2rem 0.45rem;
@@ -112,12 +111,13 @@
 }
 
 .bt-mini-icon {
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 20pt;
+  height: 20pt;
 }
 
 .bt-mini-badge-value {
-  line-height: 1;
+  font-size: 20pt;
+  line-height: 20pt;
 }
 
 .bt-scene-file-info {
