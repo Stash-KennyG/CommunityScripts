@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.1.9";
+  var PLUGIN_VERSION = "1.1.10";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -145,7 +145,12 @@
     var nodes = root.querySelectorAll("[data-bt-save-layout]");
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
-      el.classList.remove("bt-save-col", "bt-save-row");
+      if (el.classList.contains("bt-save-col")) {
+        el.classList.remove("bt-save-col", "d-flex", "flex-column");
+      }
+      if (el.classList.contains("bt-save-row")) {
+        el.classList.remove("bt-save-row", "mt-auto", "w-100", "d-flex");
+      }
       el.removeAttribute("data-bt-save-layout");
     }
   }
@@ -221,7 +226,7 @@
         containerFound: !!container,
       });
     }
-    var buttons = container.querySelectorAll("button");
+    var buttons = container.querySelectorAll("button.btn.btn-primary");
     if (DEBUG_SAVE_LAYOUT) {
       console.debug("[BetterTagger] save-layout button candidates", buttons.length);
     }
@@ -230,29 +235,30 @@
       var label = (btn.textContent && btn.textContent.trim()) || "";
       if (label !== "Save") continue;
 
-      var searchItem = btn.closest("div.mt-3.search-item");
-      if (!searchItem) continue;
       var row = btn.parentElement;
-      if (!row) continue;
-      var rowLooksLikeSceneSaveSlot = row.classList.contains("row");
+      if (!row || !(row instanceof HTMLElement)) continue;
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] row/button inspection", {
           index: i,
           label: label,
           buttonClass: btn.className,
           rowClass: row && row.className,
-          rowLooksLikeSceneSaveSlot: rowLooksLikeSceneSaveSlot,
         });
       }
-      if (!rowLooksLikeSceneSaveSlot) continue;
 
       var rightCol = row.closest(".col-lg-6, .col-md-6");
       if (rightCol) {
-        rightCol.classList.add("bt-save-col");
+        rightCol.classList.add("bt-save-col", "d-flex", "flex-column");
         rightCol.setAttribute("data-bt-save-layout", "1");
       }
 
-      row.classList.add("bt-save-row");
+      row.classList.add(
+        "bt-save-row",
+        "mt-auto",
+        "w-100",
+        "d-flex",
+        "justify-content-end"
+      );
       row.setAttribute("data-bt-save-layout", "1");
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] applied save layout", {
