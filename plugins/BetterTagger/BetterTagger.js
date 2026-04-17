@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.0.8";
+  var PLUGIN_VERSION = "1.0.9";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -110,13 +110,7 @@
     var nodes = root.querySelectorAll("[data-bt-save-layout]");
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
-      el.classList.remove(
-        "d-flex",
-        "flex-column",
-        "mt-auto",
-        "w-100",
-        "justify-content-end"
-      );
+      el.classList.remove("bt-save-col", "bt-save-row");
       el.removeAttribute("data-bt-save-layout");
     }
   }
@@ -220,11 +214,11 @@
 
       var rightCol = row.closest(".col-lg-6, .col-md-6");
       if (rightCol) {
-        rightCol.classList.add("d-flex", "flex-column");
+        rightCol.classList.add("bt-save-col");
         rightCol.setAttribute("data-bt-save-layout", "1");
       }
 
-      row.classList.add("mt-auto", "w-100", "d-flex", "justify-content-end");
+      row.classList.add("bt-save-row");
       row.setAttribute("data-bt-save-layout", "1");
       if (DEBUG_SAVE_LAYOUT) {
         console.debug("[BetterTagger] applied save layout", {
