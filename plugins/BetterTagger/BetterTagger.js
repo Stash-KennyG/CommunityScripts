@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.7";
+  var PLUGIN_VERSION = "1.2.8";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -48,7 +48,7 @@
   var SCENE_DATA_QUERY =
     "query BtSceneData($id: ID!) {" +
     "  findScene(id: $id) {" +
-    "    id title code date director details urls studio { name } performers { name } tags { name } play_count o_counter organized scene_markers { id } groups { group { id } } " +
+    "    id title code date director details urls studio { id name } performers { id name } tags { id name } play_count o_counter organized scene_markers { id } groups { group { id } } " +
     "    files { id path size mod_time duration width height frame_rate bit_rate video_codec audio_codec fingerprints { type value } }" +
     "  }" +
     "}";
@@ -724,6 +724,65 @@
     return t;
   }
 
+  function parseNumericIdFromHref(href, kind) {
+    if (!href) return null;
+    var re = kind === "studio" ? /\/studios\/([0-9]+)/ : /\/performers\/([0-9]+)/;
+    var m = String(href).match(re);
+    return m ? m[1] : null;
+  }
+
+  function extractSelectedStudioId(activeResult) {
+    if (!activeResult) return null;
+    var matchedLink = activeResult.querySelector(".entity-name a[href*='/studios/']");
+    var fromLink = matchedLink && parseNumericIdFromHref(matchedLink.getAttribute("href"), "studio");
+    if (fromLink) return fromLink;
+
+    var hidden = activeResult.querySelector(
+      ".studio-select input[type='hidden'][value]"
+    );
+    if (hidden && hidden.value) return String(hidden.value).trim();
+    return null;
+  }
+
+  function extractSelectedPerformerIds(activeResult) {
+    if (!activeResult) return [];
+    var ids = {};
+    var links = activeResult.querySelectorAll(".entity-name a[href*='/performers/']");
+    for (var i = 0; i < links.length; i++) {
+      var id = parseNumericIdFromHref(links[i].getAttribute("href"), "performer");
+      if (id) ids[id] = true;
+    }
+    var hiddenInputs = activeResult.querySelectorAll(
+      ".react-select input[type='hidden'][value]"
+    );
+    for (var j = 0; j < hiddenInputs.length; j++) {
+      var v = String(hiddenInputs[j].value || "").trim();
+      if (/^[0-9]+$/.test(v)) ids[v] = true;
+    }
+    return Object.keys(ids);
+  }
+
+  function collectProposedTagNames(activeResult) {
+    var proposed = {};
+    if (!activeResult) return proposed;
+    var chips = activeResult.querySelectorAll(
+      ".tag-select .react-select__multi-value, .tag-item"
+    );
+    for (var i = 0; i < chips.length; i++) {
+      var chip = chips[i];
+      var clone = chip.cloneNode(true);
+      var strip = clone.querySelectorAll(
+        "button, .react-select__multi-value__remove"
+      );
+      for (var s = 0; s < strip.length; s++) {
+        if (strip[s].parentNode) strip[s].parentNode.removeChild(strip[s]);
+      }
+      var nm = normalizeCompareText(clone.textContent || "");
+      if (nm) proposed[nm] = true;
+    }
+    return proposed;
+  }
+
   /**
    * Root DOM for the scraped result row that is in "confirmation" mode.
    * Stash marks selected results as `li` with classes `search-result selected-result active`.
@@ -841,54 +900,84 @@
       );
     }
 
-    // Studio row compare (active pane right column).
+    // Studio compare by selected target id (what would be saved), not raw source name text.
+    var existingStudioId = existingScene.studio && existingScene.studio.id
+      ? String(existingScene.studio.id)
+      : "";
+    var selectedStudioId = extractSelectedStudioId(activeResult) || "";
     var studioRows = activeResult.querySelectorAll(".entity-name");
     for (var sri = 0; sri < studioRows.length; sri++) {
       var studioRow = studioRows[sri];
       var rawStudioText = (studioRow.textContent || "").trim();
       if (!/^studio/i.test(rawStudioText)) continue;
-      var studioDisplay = stripLeadingEntityLabel(rawStudioText);
-      compareField(
-        studioRow,
-        existingScene.studio && existingScene.studio.name,
-        studioDisplay,
-        "studio",
-        sceneId
-      );
+      var studioTarget = studioRow.querySelector("a[href*='/studios/']") || studioRow;
+      if (!existingStudioId || !selectedStudioId) {
+        applyCompareResult(studioTarget, null);
+        btDebug("compare-field", {
+          sceneId: sceneId,
+          key: "studio",
+          leftId: selectedStudioId,
+          rightId: existingStudioId,
+          skipped: true,
+          reason: "missing-id",
+        });
+      } else {
+        applyCompareResult(studioTarget, selectedStudioId === existingStudioId);
+        btDebug("compare-field", {
+          sceneId: sceneId,
+          key: "studio",
+          leftId: selectedStudioId,
+          rightId: existingStudioId,
+          match: selectedStudioId === existingStudioId,
+        });
+      }
     }
 
-    // Performer rows compare (one per performer row).
+    // Performer compare by selected target ids (what would be saved).
     var existingPerformerSet = {};
     var existingPerformers = existingScene.performers || [];
     for (var epi = 0; epi < existingPerformers.length; epi++) {
-      var epName = normalizeCompareText(existingPerformers[epi] && existingPerformers[epi].name);
-      if (epName) existingPerformerSet[epName] = true;
+      var epId = existingPerformers[epi] && existingPerformers[epi].id;
+      if (epId) existingPerformerSet[String(epId)] = true;
     }
     var existingPerformerCount = Object.keys(existingPerformerSet).length;
+    var selectedPerformerIds = extractSelectedPerformerIds(activeResult);
+    var selectedPerformerSet = {};
+    for (var spi = 0; spi < selectedPerformerIds.length; spi++) {
+      selectedPerformerSet[selectedPerformerIds[spi]] = true;
+    }
     var performerRows = activeResult.querySelectorAll(".entity-name");
     for (var pri = 0; pri < performerRows.length; pri++) {
       var performerRow = performerRows[pri];
       var rawPerformerText = (performerRow.textContent || "").trim();
       if (!/^performer/i.test(rawPerformerText)) continue;
-      var performerDisplay = stripLeadingEntityLabel(rawPerformerText);
-      var performerNorm = normalizeCompareText(performerDisplay);
-      if (!existingPerformerCount) {
-        applyCompareResult(performerRow, null);
+      var performerTarget = performerRow.querySelector("a[href*='/performers/']") || performerRow;
+      var performerId = parseNumericIdFromHref(
+        performerTarget.getAttribute ? performerTarget.getAttribute("href") : "",
+        "performer"
+      );
+      if (!performerId && selectedPerformerIds.length === 1) {
+        performerId = selectedPerformerIds[0];
+      }
+      if (!existingPerformerCount || !performerId) {
+        applyCompareResult(performerTarget, null);
         btDebug("compare-field", {
           sceneId: sceneId,
           key: "performer",
-          left: performerNorm,
+          leftId: performerId || "",
+          selectedSetSize: selectedPerformerIds.length,
           skipped: true,
-          reason: "existing-empty",
+          reason: !existingPerformerCount ? "existing-empty" : "missing-id",
         });
       } else {
-        var performerMatch = !!existingPerformerSet[performerNorm];
-        applyCompareResult(performerRow, performerMatch);
+        var performerMatch = !!existingPerformerSet[String(performerId)];
+        applyCompareResult(performerTarget, performerMatch);
         btDebug("compare-field", {
           sceneId: sceneId,
           key: "performer",
-          left: performerNorm,
+          leftId: String(performerId),
           rightSetSize: existingPerformerCount,
+          selectedSetSize: selectedPerformerIds.length,
           match: performerMatch,
         });
       }
@@ -938,6 +1027,23 @@
       );
       for (var mi = 0; mi < multiVals.length; mi++) {
         markChipIfExisting(multiVals[mi]);
+      }
+
+      // Drawer existing tags: green if staying, red if removed by proposed update.
+      var proposedTagNames = collectProposedTagNames(activeResult);
+      var drawerTags = searchItem.querySelectorAll(
+        ".original-scene-details .tag-item.tag-link"
+      );
+      for (var di = 0; di < drawerTags.length; di++) {
+        var dtag = drawerTags[di];
+        dtag.classList.remove("bt-existing-match", "bt-existing-mismatch");
+        var dname = normalizeCompareText(dtag.textContent || "");
+        if (!dname) continue;
+        if (proposedTagNames[dname]) {
+          dtag.classList.add("bt-existing-match");
+        } else {
+          dtag.classList.add("bt-existing-mismatch");
+        }
       }
     }
   }

@@ -80,6 +80,24 @@
   font-weight: 600;
 }
 
+.tag-item.tag-link.bt-existing-match {
+  border: 1px solid #1fb157 !important;
+}
+
+.tag-item.tag-link.bt-existing-match a {
+  color: #1fb157 !important;
+  font-weight: 600;
+}
+
+.tag-item.tag-link.bt-existing-mismatch {
+  border: 1px solid #d9534f !important;
+}
+
+.tag-item.tag-link.bt-existing-mismatch a {
+  color: #d9534f !important;
+  font-weight: 600;
+}
+
 .bt-verified-wrap {
   display: inline-block;
   margin-left: 0.35rem;
