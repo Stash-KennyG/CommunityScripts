@@ -132,6 +132,18 @@
   color: #0f9960;
 }
 
+.bt-add-wrap {
+  display: inline-flex;
+  margin: 0 0.35rem;
+  vertical-align: middle;
+  color: #0f9960;
+}
+
+.bt-add-wrap svg {
+  width: 1em;
+  height: 1em;
+}
+
 /* Missing performer QA (REQ-DM-5) */
 .bt-qa-missing-performer {
   outline: 2px solid #b71c1c;
