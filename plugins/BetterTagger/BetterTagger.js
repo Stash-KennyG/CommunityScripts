@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.11";
+  var PLUGIN_VERSION = "1.2.12";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -733,8 +733,20 @@
 
   function extractSelectedStudioId(activeResult) {
     if (!activeResult) return null;
-    var matchedLink = activeResult.querySelector(".entity-name a[href*='/studios/']");
-    var fromLink = matchedLink && parseNumericIdFromHref(matchedLink.getAttribute("href"), "studio");
+    // Prefer the internal selected-link target (right side "Matched: /studios/<id>").
+    var internalMatchedLink = activeResult.querySelector(
+      ".entity-name a[href^='/studios/']"
+    );
+    var fromLink =
+      internalMatchedLink &&
+      parseNumericIdFromHref(internalMatchedLink.getAttribute("href"), "studio");
+    if (fromLink) return fromLink;
+
+    // Fallback: any studio link in the row.
+    var anyMatchedLink = activeResult.querySelector(".entity-name a[href*='/studios/']");
+    fromLink =
+      anyMatchedLink &&
+      parseNumericIdFromHref(anyMatchedLink.getAttribute("href"), "studio");
     if (fromLink) return fromLink;
 
     var hidden = activeResult.querySelector(
@@ -951,7 +963,10 @@
       var studioRow = studioRows[sri];
       var rawStudioText = (studioRow.textContent || "").trim();
       if (!/^studio/i.test(rawStudioText)) continue;
-      var studioTarget = studioRow.querySelector("a[href*='/studios/']") || studioRow;
+      var studioTarget =
+        studioRow.querySelector("a[href^='/studios/']") ||
+        studioRow.querySelector("a[href*='/studios/']") ||
+        studioRow;
       if (!existingStudioId || !selectedStudioId) {
         applyCompareResult(studioTarget, null);
         btDebug("compare-field", {
