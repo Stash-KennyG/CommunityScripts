@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.15";
+  var PLUGIN_VERSION = "1.2.16";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -779,6 +779,26 @@
     return Object.keys(ids);
   }
 
+  function extractRowSelectedPerformerId(performerContainer) {
+    if (!performerContainer) return "";
+    var matchedLink =
+      performerContainer.querySelector(
+        ".optional-field-content a[href^='/performers/']"
+      ) || performerContainer.querySelector("a[href^='/performers/']");
+    var linkId =
+      matchedLink &&
+      parseNumericIdFromHref(matchedLink.getAttribute("href"), "performer");
+    if (linkId) return linkId;
+
+    var hidden = performerContainer.querySelector(
+      ".react-select input[type='hidden'][value]"
+    );
+    if (hidden && /^[0-9]+$/.test(String(hidden.value || "").trim())) {
+      return String(hidden.value).trim();
+    }
+    return "";
+  }
+
   function collectProposedTagNames(activeResult) {
     var proposed = {};
     if (!activeResult) return proposed;
@@ -1006,10 +1026,6 @@
     }
     var existingPerformerCount = Object.keys(existingPerformerSet).length;
     var selectedPerformerIds = extractSelectedPerformerIds(activeResult);
-    var selectedPerformerSet = {};
-    for (var spi = 0; spi < selectedPerformerIds.length; spi++) {
-      selectedPerformerSet[selectedPerformerIds[spi]] = true;
-    }
     var performerRows = activeResult.querySelectorAll(".entity-name");
     for (var pri = 0; pri < performerRows.length; pri++) {
       var performerRow = performerRows[pri];
@@ -1024,13 +1040,7 @@
             performerContainer.querySelector("a[href^='/performers/']"))) ||
         performerRow.querySelector("a[href^='/performers/']") ||
         performerRow;
-      var performerId = parseNumericIdFromHref(
-        performerTarget.getAttribute ? performerTarget.getAttribute("href") : "",
-        "performer"
-      );
-      if (!performerId && selectedPerformerIds.length === 1) {
-        performerId = selectedPerformerIds[0];
-      }
+      var performerId = extractRowSelectedPerformerId(performerContainer);
       if (!existingPerformerCount || !performerId) {
         applyCompareResult(performerTarget, null);
         btDebug("compare-field", {
