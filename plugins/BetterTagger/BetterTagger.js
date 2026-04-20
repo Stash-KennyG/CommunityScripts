@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.6";
+  var PLUGIN_VERSION = "1.2.7";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -48,7 +48,7 @@
   var SCENE_DATA_QUERY =
     "query BtSceneData($id: ID!) {" +
     "  findScene(id: $id) {" +
-    "    id title code date director details urls tags { name } play_count o_counter organized scene_markers { id } groups { group { id } } " +
+    "    id title code date director details urls studio { name } performers { name } tags { name } play_count o_counter organized scene_markers { id } groups { group { id } } " +
     "    files { id path size mod_time duration width height frame_rate bit_rate video_codec audio_codec fingerprints { type value } }" +
     "  }" +
     "}";
@@ -690,18 +690,38 @@
     }
   }
 
-  function compareField(fieldEl, existingValue, displayedOverride) {
+  function compareField(fieldEl, existingValue, displayedOverride, debugKey, sceneId) {
     if (!fieldEl) return;
     var right = normalizeCompareText(existingValue);
     if (!right) {
       // underlying null/empty => no behavior
       applyCompareResult(fieldEl, null);
+      btDebug("compare-field", {
+        sceneId: sceneId,
+        key: debugKey,
+        skipped: true,
+        reason: "existing-empty",
+      });
       return;
     }
     var left = normalizeCompareText(
       displayedOverride !== undefined ? displayedOverride : fieldEl.textContent
     );
+    btDebug("compare-field", {
+      sceneId: sceneId,
+      key: debugKey,
+      left: left,
+      right: right,
+      match: left === right,
+    });
     applyCompareResult(fieldEl, left === right);
+  }
+
+  function stripLeadingEntityLabel(text) {
+    var t = String(text || "").trim();
+    var idx = t.indexOf(":");
+    if (idx >= 0) return t.slice(idx + 1).trim();
+    return t;
   }
 
   /**
@@ -787,7 +807,7 @@
         ".tag-select .react-select__multi-value"
       ).length,
     });
-    compareField(titleField, existingScene.title);
+    compareField(titleField, existingScene.title, undefined, "title", sceneId);
 
     // Code/date optional h5 fields in scene-metadata column
     var metaFields = activeResult.querySelectorAll(
@@ -798,9 +818,9 @@
       var text = (field.textContent || "").trim();
       if (!text) continue;
       if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        compareField(field, existingScene.date);
+        compareField(field, existingScene.date, undefined, "date", sceneId);
       } else {
-        compareField(field, existingScene.code);
+        compareField(field, existingScene.code, undefined, "code", sceneId);
       }
     }
 
@@ -812,7 +832,66 @@
       var directorText = (directorField.textContent || "")
         .replace(/^director:\s*/i, "")
         .trim();
-      compareField(directorField, existingScene.director, directorText);
+      compareField(
+        directorField,
+        existingScene.director,
+        directorText,
+        "director",
+        sceneId
+      );
+    }
+
+    // Studio row compare (active pane right column).
+    var studioRows = activeResult.querySelectorAll(".entity-name");
+    for (var sri = 0; sri < studioRows.length; sri++) {
+      var studioRow = studioRows[sri];
+      var rawStudioText = (studioRow.textContent || "").trim();
+      if (!/^studio/i.test(rawStudioText)) continue;
+      var studioDisplay = stripLeadingEntityLabel(rawStudioText);
+      compareField(
+        studioRow,
+        existingScene.studio && existingScene.studio.name,
+        studioDisplay,
+        "studio",
+        sceneId
+      );
+    }
+
+    // Performer rows compare (one per performer row).
+    var existingPerformerSet = {};
+    var existingPerformers = existingScene.performers || [];
+    for (var epi = 0; epi < existingPerformers.length; epi++) {
+      var epName = normalizeCompareText(existingPerformers[epi] && existingPerformers[epi].name);
+      if (epName) existingPerformerSet[epName] = true;
+    }
+    var existingPerformerCount = Object.keys(existingPerformerSet).length;
+    var performerRows = activeResult.querySelectorAll(".entity-name");
+    for (var pri = 0; pri < performerRows.length; pri++) {
+      var performerRow = performerRows[pri];
+      var rawPerformerText = (performerRow.textContent || "").trim();
+      if (!/^performer/i.test(rawPerformerText)) continue;
+      var performerDisplay = stripLeadingEntityLabel(rawPerformerText);
+      var performerNorm = normalizeCompareText(performerDisplay);
+      if (!existingPerformerCount) {
+        applyCompareResult(performerRow, null);
+        btDebug("compare-field", {
+          sceneId: sceneId,
+          key: "performer",
+          left: performerNorm,
+          skipped: true,
+          reason: "existing-empty",
+        });
+      } else {
+        var performerMatch = !!existingPerformerSet[performerNorm];
+        applyCompareResult(performerRow, performerMatch);
+        btDebug("compare-field", {
+          sceneId: sceneId,
+          key: "performer",
+          left: performerNorm,
+          rightSetSize: existingPerformerCount,
+          match: performerMatch,
+        });
+      }
     }
 
     // Tag badges in scene tagger: show existing local tags as green.
