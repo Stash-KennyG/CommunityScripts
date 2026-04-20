@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.13";
+  var PLUGIN_VERSION = "1.2.14";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -735,10 +735,13 @@
 
   function extractSelectedStudioId(activeResult) {
     if (!activeResult) return null;
-    // Prefer the internal selected-link target (right side "Matched: /studios/<id>").
+    // Prefer the internal selected-link target shown on the right side "Matched:" block.
     var internalMatchedLink = activeResult.querySelector(
-      ".entity-name a[href^='/studios/']"
+      ".optional-field-content a[href^='/studios/']"
     );
+    if (!internalMatchedLink) {
+      internalMatchedLink = activeResult.querySelector("a[href^='/studios/']");
+    }
     var fromLink =
       internalMatchedLink &&
       parseNumericIdFromHref(internalMatchedLink.getAttribute("href"), "studio");
@@ -958,9 +961,12 @@
       var studioRow = studioRows[sri];
       var rawStudioText = (studioRow.textContent || "").trim();
       if (!/^studio/i.test(rawStudioText)) continue;
+      var studioContainer = studioRow.closest(".row.no-gutters") || studioRow.parentElement;
       var studioTarget =
+        (studioContainer &&
+          (studioContainer.querySelector(".optional-field-content a[href^='/studios/']") ||
+            studioContainer.querySelector("a[href^='/studios/']"))) ||
         studioRow.querySelector("a[href^='/studios/']") ||
-        studioRow.querySelector("a[href*='/studios/']") ||
         studioRow;
       if (!existingStudioId || !matchedLocalStudioId) {
         applyCompareResult(studioTarget, null);
