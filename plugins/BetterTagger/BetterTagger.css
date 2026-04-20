@@ -32,6 +32,17 @@
   color: #fff;
 }
 
+/* Keep status icons readable against tier backgrounds. */
+.bt-fp-severe .SceneTaggerIcon,
+.bt-fp-warn .SceneTaggerIcon,
+.bt-fp-good .SceneTaggerIcon {
+  color: #fff !important;
+}
+
+.bt-fp-caution .SceneTaggerIcon {
+  color: #1a1a1a !important;
+}
+
 .bt-fp-pct {
   font-weight: 600;
   margin-left: 0.15em;
