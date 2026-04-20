@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.14";
+  var PLUGIN_VERSION = "1.2.15";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -757,7 +757,14 @@
   function extractSelectedPerformerIds(activeResult) {
     if (!activeResult) return [];
     var ids = {};
-    var links = activeResult.querySelectorAll(".entity-name a[href*='/performers/']");
+
+    // Prefer right-side matched local performer links in OptionalField content.
+    var links = activeResult.querySelectorAll(
+      ".optional-field-content a[href^='/performers/']"
+    );
+    if (!links.length) {
+      links = activeResult.querySelectorAll("a[href^='/performers/']");
+    }
     for (var i = 0; i < links.length; i++) {
       var id = parseNumericIdFromHref(links[i].getAttribute("href"), "performer");
       if (id) ids[id] = true;
@@ -1008,7 +1015,15 @@
       var performerRow = performerRows[pri];
       var rawPerformerText = (performerRow.textContent || "").trim();
       if (!/^performer/i.test(rawPerformerText)) continue;
-      var performerTarget = performerRow.querySelector("a[href*='/performers/']") || performerRow;
+      var performerContainer = performerRow.closest(".row.no-gutters") || performerRow.parentElement;
+      var performerTarget =
+        (performerContainer &&
+          (performerContainer.querySelector(
+            ".optional-field-content a[href^='/performers/']"
+          ) ||
+            performerContainer.querySelector("a[href^='/performers/']"))) ||
+        performerRow.querySelector("a[href^='/performers/']") ||
+        performerRow;
       var performerId = parseNumericIdFromHref(
         performerTarget.getAttribute ? performerTarget.getAttribute("href") : "",
         "performer"
