@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.18";
+  var PLUGIN_VERSION = "1.2.19";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -1120,7 +1120,9 @@
         var dtag = drawerTags[di];
         var dlink = dtag.querySelector("a[href]");
         var dhref = dlink && dlink.getAttribute ? dlink.getAttribute("href") : "";
-        if (String(dhref || "").indexOf("/tags/") === -1) continue;
+        // TagLink in drawer may point to filtered scene URLs, not /tags/<id>.
+        // Exclude performer links explicitly and treat remaining tag-link badges as tags.
+        if (String(dhref || "").indexOf("/performers/") !== -1) continue;
         dtag.classList.remove("bt-existing-match", "bt-existing-mismatch");
         var dname = normalizeCompareText(dtag.textContent || "");
         if (!dname) continue;
