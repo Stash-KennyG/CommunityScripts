@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.19";
+  var PLUGIN_VERSION = "1.2.20";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -1088,11 +1088,12 @@
         return normalizeCompareText(clone.textContent || "");
       }
 
-      function markChipIfExisting(chipEl) {
+      function markProposedTagDelta(chipEl) {
         if (!chipEl) return;
-        chipEl.classList.remove("bt-existing-match");
+        chipEl.classList.remove("bt-existing-match", "bt-existing-mismatch");
         var nm = compareTagLabelTextFromEl(chipEl);
-        if (nm && existingSet[nm]) chipEl.classList.add("bt-existing-match");
+        // Green = tag will be added by save (not currently on existing scene).
+        if (nm && !existingSet[nm]) chipEl.classList.add("bt-existing-match");
       }
 
       // Scraped tags that still need create/link (Badge.tag-item + action buttons).
@@ -1100,7 +1101,7 @@
       for (var bi = 0; bi < tagBadges.length; bi++) {
         var badge = tagBadges[bi];
         if (!badge.querySelector("button")) continue;
-        markChipIfExisting(badge);
+        markProposedTagDelta(badge);
       }
 
       // Tags already linked on the scene (TagSelect / react-select multi-value chips).
@@ -1108,7 +1109,7 @@
         ".tag-select .react-select__multi-value"
       );
       for (var mi = 0; mi < multiVals.length; mi++) {
-        markChipIfExisting(multiVals[mi]);
+        markProposedTagDelta(multiVals[mi]);
       }
 
       // Drawer existing tags: green if staying, red if removed by proposed update.
@@ -1126,9 +1127,8 @@
         dtag.classList.remove("bt-existing-match", "bt-existing-mismatch");
         var dname = normalizeCompareText(dtag.textContent || "");
         if (!dname) continue;
-        if (proposedTagNames[dname]) {
-          dtag.classList.add("bt-existing-match");
-        } else {
+        // Drawer: red indicates tag would be removed by save.
+        if (!proposedTagNames[dname]) {
           dtag.classList.add("bt-existing-mismatch");
         }
       }
