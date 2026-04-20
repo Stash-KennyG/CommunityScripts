@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.12";
+  var PLUGIN_VERSION = "1.2.13";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -726,7 +726,9 @@
 
   function parseNumericIdFromHref(href, kind) {
     if (!href) return null;
-    var re = kind === "studio" ? /\/studios\/([0-9]+)/ : /\/performers\/([0-9]+)/;
+    var re = kind === "studio"
+      ? /\/studios\/([0-9]+)(?:[/?#]|$)/
+      : /\/performers\/([0-9]+)(?:[/?#]|$)/;
     var m = String(href).match(re);
     return m ? m[1] : null;
   }
@@ -740,13 +742,6 @@
     var fromLink =
       internalMatchedLink &&
       parseNumericIdFromHref(internalMatchedLink.getAttribute("href"), "studio");
-    if (fromLink) return fromLink;
-
-    // Fallback: any studio link in the row.
-    var anyMatchedLink = activeResult.querySelector(".entity-name a[href*='/studios/']");
-    fromLink =
-      anyMatchedLink &&
-      parseNumericIdFromHref(anyMatchedLink.getAttribute("href"), "studio");
     if (fromLink) return fromLink;
 
     var hidden = activeResult.querySelector(
@@ -957,7 +952,7 @@
     var existingStudioId = existingScene.studio && existingScene.studio.id
       ? String(existingScene.studio.id)
       : "";
-    var selectedStudioId = extractSelectedStudioId(activeResult) || "";
+    var matchedLocalStudioId = extractSelectedStudioId(activeResult) || "";
     var studioRows = activeResult.querySelectorAll(".entity-name");
     for (var sri = 0; sri < studioRows.length; sri++) {
       var studioRow = studioRows[sri];
@@ -967,24 +962,24 @@
         studioRow.querySelector("a[href^='/studios/']") ||
         studioRow.querySelector("a[href*='/studios/']") ||
         studioRow;
-      if (!existingStudioId || !selectedStudioId) {
+      if (!existingStudioId || !matchedLocalStudioId) {
         applyCompareResult(studioTarget, null);
         btDebug("compare-field", {
           sceneId: sceneId,
           key: "studio",
-          leftId: selectedStudioId,
-          rightId: existingStudioId,
+          existingLocalId: existingStudioId,
+          matchedLocalId: matchedLocalStudioId,
           skipped: true,
           reason: "missing-id",
         });
       } else {
-        applyCompareResult(studioTarget, selectedStudioId === existingStudioId);
+        applyCompareResult(studioTarget, matchedLocalStudioId === existingStudioId);
         btDebug("compare-field", {
           sceneId: sceneId,
           key: "studio",
-          leftId: selectedStudioId,
-          rightId: existingStudioId,
-          match: selectedStudioId === existingStudioId,
+          existingLocalId: existingStudioId,
+          matchedLocalId: matchedLocalStudioId,
+          match: matchedLocalStudioId === existingStudioId,
         });
       }
     }
