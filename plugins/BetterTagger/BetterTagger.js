@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.9";
+  var PLUGIN_VERSION = "1.2.11";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -868,24 +868,58 @@
     });
     compareField(titleField, existingScene.title, undefined, "title", sceneId);
 
-    // Code/date optional h5 fields in scene-metadata column
-    var metaFields = activeResult.querySelectorAll(
-      ".scene-metadata h5 .optional-field-content"
-    );
-    for (var i = 0; i < metaFields.length; i++) {
-      var field = metaFields[i];
-      var text = (field.textContent || "").trim();
-      if (!text) continue;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        compareField(field, existingScene.date, undefined, "date", sceneId);
-      } else {
-        compareField(field, existingScene.code, undefined, "code", sceneId);
+    // H5 optional fields: match by known value content, not positional label assumptions.
+    var allH5Fields = activeResult.querySelectorAll("h5 .optional-field-content");
+    var unmatchedH5 = [];
+    for (var i = 0; i < allH5Fields.length; i++) unmatchedH5.push(allH5Fields[i]);
+
+    function takeMatchByNormalizedValue(targetValue, transform) {
+      var targetNorm = normalizeCompareText(targetValue);
+      if (!targetNorm) return null;
+      for (var hi = 0; hi < unmatchedH5.length; hi++) {
+        var node = unmatchedH5[hi];
+        var raw = node && node.textContent ? node.textContent : "";
+        var candidate = transform ? transform(raw) : raw;
+        if (normalizeCompareText(candidate) === targetNorm) {
+          unmatchedH5.splice(hi, 1);
+          return node;
+        }
       }
+      return null;
     }
 
-    // Director field
-    var directorField = activeResult.querySelector(
-      ".d-flex.flex-column h5 .optional-field-content"
+    // Date
+    var dateField = takeMatchByNormalizedValue(existingScene.date);
+    if (dateField) {
+      compareField(dateField, existingScene.date, undefined, "date", sceneId);
+    } else {
+      btDebug("compare-field", {
+        sceneId: sceneId,
+        key: "date",
+        skipped: true,
+        reason: "no-h5-value-match",
+      });
+    }
+
+    // Code
+    var codeField = takeMatchByNormalizedValue(existingScene.code);
+    if (codeField) {
+      compareField(codeField, existingScene.code, undefined, "code", sceneId);
+    } else {
+      btDebug("compare-field", {
+        sceneId: sceneId,
+        key: "code",
+        skipped: true,
+        reason: "no-h5-value-match",
+      });
+    }
+
+    // Director (label may be present in UI text; normalize with prefix strip)
+    var directorField = takeMatchByNormalizedValue(
+      existingScene.director,
+      function (txt) {
+        return String(txt || "").replace(/^director:\s*/i, "");
+      }
     );
     if (directorField) {
       var directorText = (directorField.textContent || "")
@@ -898,6 +932,13 @@
         "director",
         sceneId
       );
+    } else {
+      btDebug("compare-field", {
+        sceneId: sceneId,
+        key: "director",
+        skipped: true,
+        reason: "no-h5-value-match",
+      });
     }
 
     // Studio compare by selected target id (what would be saved), not raw source name text.
