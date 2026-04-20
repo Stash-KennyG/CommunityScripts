@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.17";
+  var PLUGIN_VERSION = "1.2.18";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -1128,6 +1128,33 @@
           dtag.classList.add("bt-existing-match");
         } else {
           dtag.classList.add("bt-existing-mismatch");
+        }
+      }
+
+      // Drawer existing performers: green if present in incoming/matched performer set,
+      // red if not present.
+      var incomingPerformerIds = extractSelectedPerformerIds(activeResult);
+      var incomingPerformerSet = {};
+      for (var ipi = 0; ipi < incomingPerformerIds.length; ipi++) {
+        incomingPerformerSet[incomingPerformerIds[ipi]] = true;
+      }
+      if (incomingPerformerIds.length) {
+        var drawerPerformerLinks = searchItem.querySelectorAll(
+          ".original-scene-details a[href*='/performers/']"
+        );
+        for (var dpi = 0; dpi < drawerPerformerLinks.length; dpi++) {
+          var plink = drawerPerformerLinks[dpi];
+          var pid = parseNumericIdFromHref(
+            plink.getAttribute ? plink.getAttribute("href") : "",
+            "performer"
+          );
+          if (!pid) continue;
+          plink.classList.remove("bt-existing-match", "bt-existing-mismatch");
+          if (incomingPerformerSet[String(pid)]) {
+            plink.classList.add("bt-existing-match");
+          } else {
+            plink.classList.add("bt-existing-mismatch");
+          }
         }
       }
     }
