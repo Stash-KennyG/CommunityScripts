@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.16";
+  var PLUGIN_VERSION = "1.2.17";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -1118,6 +1118,9 @@
       );
       for (var di = 0; di < drawerTags.length; di++) {
         var dtag = drawerTags[di];
+        var dlink = dtag.querySelector("a[href]");
+        var dhref = dlink && dlink.getAttribute ? dlink.getAttribute("href") : "";
+        if (String(dhref || "").indexOf("/tags/") === -1) continue;
         dtag.classList.remove("bt-existing-match", "bt-existing-mismatch");
         var dname = normalizeCompareText(dtag.textContent || "");
         if (!dname) continue;
