@@ -2,7 +2,7 @@
 
 (function () {
   var PLUGIN_ID = "BetterTagger";
-  var PLUGIN_VERSION = "1.2.20";
+  var PLUGIN_VERSION = "1.2.21";
   var DEBUG_SAVE_LAYOUT = true;
   var DEBOUNCE_MS = 180;
   var SETTINGS_TTL_MS = 30000;
@@ -733,6 +733,31 @@
     return m ? m[1] : null;
   }
 
+  function isPerformerFilterHref(href) {
+    var s = String(href || "");
+    return (
+      s.indexOf("/performers/") !== -1 ||
+      s.indexOf("%22type%22:%22performers%22") !== -1 ||
+      s.indexOf('"type":"performers"') !== -1
+    );
+  }
+
+  function parsePerformerIdFromHref(href) {
+    var direct = parseNumericIdFromHref(href, "performer");
+    if (direct) return direct;
+    var s = String(href || "");
+    var m = s.match(/%22id%22:%22([0-9]+)%22/);
+    if (m) return m[1];
+    try {
+      var decoded = decodeURIComponent(s);
+      var m2 = decoded.match(/"id":"([0-9]+)"/);
+      if (m2) return m2[1];
+    } catch (e) {
+      // ignore decode errors and return empty
+    }
+    return "";
+  }
+
   function extractSelectedStudioId(activeResult) {
     if (!activeResult) return null;
     // Prefer the internal selected-link target shown on the right side "Matched:" block.
@@ -1123,7 +1148,7 @@
         var dhref = dlink && dlink.getAttribute ? dlink.getAttribute("href") : "";
         // TagLink in drawer may point to filtered scene URLs, not /tags/<id>.
         // Exclude performer links explicitly and treat remaining tag-link badges as tags.
-        if (String(dhref || "").indexOf("/performers/") !== -1) continue;
+        if (isPerformerFilterHref(dhref)) continue;
         dtag.classList.remove("bt-existing-match", "bt-existing-mismatch");
         var dname = normalizeCompareText(dtag.textContent || "");
         if (!dname) continue;
@@ -1142,20 +1167,20 @@
       }
       if (incomingPerformerIds.length) {
         var drawerPerformerLinks = searchItem.querySelectorAll(
-          ".original-scene-details a[href*='/performers/']"
+          ".original-scene-details .tag-item.tag-link a[href]"
         );
         for (var dpi = 0; dpi < drawerPerformerLinks.length; dpi++) {
           var plink = drawerPerformerLinks[dpi];
-          var pid = parseNumericIdFromHref(
-            plink.getAttribute ? plink.getAttribute("href") : "",
-            "performer"
-          );
+          var phref = plink.getAttribute ? plink.getAttribute("href") : "";
+          if (!isPerformerFilterHref(phref)) continue;
+          var pid = parsePerformerIdFromHref(phref);
           if (!pid) continue;
-          plink.classList.remove("bt-existing-match", "bt-existing-mismatch");
+          var pchip = plink.closest(".tag-item.tag-link") || plink;
+          pchip.classList.remove("bt-existing-match", "bt-existing-mismatch");
           if (incomingPerformerSet[String(pid)]) {
-            plink.classList.add("bt-existing-match");
+            pchip.classList.add("bt-existing-match");
           } else {
-            plink.classList.add("bt-existing-mismatch");
+            pchip.classList.add("bt-existing-mismatch");
           }
         }
       }
